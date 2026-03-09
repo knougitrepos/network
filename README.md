@@ -48,6 +48,10 @@ TCP/HTTP2 전송 경로에서 `write -> buffer -> segmentation -> send` 과정�
   - heatmap / Pareto scatter / CSV export
 - [`progress_notes.md`](/C:/git/network/progress_notes.md)
   - Heuristic -> ML -> RL 방향성 메모
+- [`rl/env.py`](/C:/git/network/rl/env.py)
+  - RL 실험용 환경 스켈레톤(state/action/reward/reset/step)
+- [`rl/README.md`](/C:/git/network/rl/README.md)
+  - RL 상태/행동/보상 정의, 평가 프로토콜/재현성 규칙 초안
 - [`init_plan.md`](/C:/git/network/init_plan.md)
   - 초기 실험 설계와 Mermaid 흐름도
 
@@ -109,7 +113,7 @@ TCP/HTTP2 전송 경로에서 `write -> buffer -> segmentation -> send` 과정�
 - [x] `fixed_sweep`, `pick_oracle`
 - [x] `RandomForestRegressor` 기반 `ml_regression_adaptive`
 - [x] heatmap / Pareto scatter / CSV export
-- [ ] RL 실험용 `rl/env.py` 설계 초안 문서화
+- [x] RL 실험용 `rl/env.py` 설계 초안 문서화 (`rl/env.py`, `rl/README.md`)
 
 ## 작업 원칙
 

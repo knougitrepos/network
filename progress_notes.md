@@ -92,3 +92,22 @@
 - `output/jupyter-notebook/assets/fixed_sweep_results.csv`
 - `output/jupyter-notebook/assets/oracle_selection.csv`
 - `output/jupyter-notebook/assets/ml_eval_results.csv`
+
+## 2026-03-09 RL env 초안 반영
+
+### 이번 반영 내용
+
+- `rl/env.py` 추가
+  - `TCPBatchingEnv` 환경 클래스 초안 작성
+  - state/action/reward/reset/step 인터페이스 고정
+  - `EnvConfig`, `StepMetrics`, `run_episode` smoke 유틸리티 포함
+- `rl/README.md` 추가
+  - 상태공간/행동공간/보상함수 설계 근거 문서화
+  - baseline(heuristic, ml_regression_adaptive) 대비 평가 프로토콜 초안 추가
+  - seed/CSV 파일명/시나리오 매트릭스 버전 규칙 정의
+
+### 다음 작업
+
+- [ ] `run_simulation` 연계형 flush step 구현
+- [ ] RL 학습 스크립트 초안(DQN/PPO 중 1개) 추가
+- [ ] baseline vs RL 비교표 자동 생성 스크립트 추가
