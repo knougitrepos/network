@@ -10,6 +10,8 @@ TCP 환경에서 콘텐츠 유형에 따라 batching 정책이 어떻게 달라�
   - `static_file`과 `dynamic_stream` 대표 시나리오에서 `immediate`, `fixed_batch`, `heuristic_adaptive`를 비교하는 baseline 노트북이다.
 - `output/jupyter-notebook/assets/reference_policy_overview.png`
   - 현재 baseline 노트북 실행으로 생성된 기준 그래프다.
+- `progress_notes.md`
+  - 연구 방향(Heuristic→ML→RL), 문제 정의, 논문/구현 로드맵, 후속 TODO를 기록한 진행 메모다.
 
 ## 실험 범위
 
