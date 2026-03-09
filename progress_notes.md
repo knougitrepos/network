@@ -65,9 +65,31 @@
 
 ### 저장소 반영용 작업 항목
 
-- [ ] 노트북에 `fixed_sweep`, `pick_oracle` 구현
-- [ ] `RandomForestRegressor` 기반 `ml_regression_adaptive` 셀 추가
-- [ ] heatmap / Pareto scatter / CSV export 추가
+- [x] 노트북에 `fixed_sweep`, `pick_oracle` 구현
+- [x] `RandomForestRegressor` 기반 `ml_regression_adaptive` 셀 추가
+- [x] heatmap / Pareto scatter / CSV export 추가
 - [ ] RL 실험을 위한 `rl/env.py` 설계 초안 문서화
-- [ ] 결과 비교 지표에 `syscall_count` 포함 검토
+- [x] 결과 비교 지표에 `syscall_count` 포함 검토
 
+
+## 2026-03-09 구현 진행 업데이트
+
+### 완료한 항목
+
+- [x] 노트북에 `fixed_sweep`, `pick_oracle` 구현
+- [x] `RandomForestRegressor` 기반 `ml_regression_adaptive` 평가 셀 추가
+- [x] heatmap / Pareto scatter / CSV export 셀 및 파일 저장 로직 추가
+- [x] 결과 비교 지표에 `syscall_count`(flush 호출 수 근사치) 포함
+
+### 남은 항목
+
+- [ ] RL 실험을 위한 `rl/env.py` 설계 초안 문서화
+
+### 산출 파일(노트북 실행 시 생성)
+
+- `output/jupyter-notebook/assets/fixed_batch_heatmap.png`
+- `output/jupyter-notebook/assets/policy_pareto_scatter.png`
+- `output/jupyter-notebook/assets/reference_summary.csv`
+- `output/jupyter-notebook/assets/fixed_sweep_results.csv`
+- `output/jupyter-notebook/assets/oracle_selection.csv`
+- `output/jupyter-notebook/assets/ml_eval_results.csv`

@@ -50,10 +50,11 @@ TCP 환경에서 콘텐츠 유형에 따라 batching 정책이 어떻게 달라�
 
 ## 다음 단계
 
-- `fixed_batch` 전체 sweep 셀 추가
-- scenario별 oracle 설정 추출
-- `RandomForestRegressor` 기반 `ml_regression_adaptive` 셀 추가
-- heatmap, Pareto scatter, CSV export 추가
+- [x] `fixed_batch` 전체 sweep 셀 추가
+- [x] scenario별 oracle 설정 추출
+- [x] `RandomForestRegressor` 기반 `ml_regression_adaptive` 셀 추가
+- [x] heatmap, Pareto scatter, CSV export 추가
+- [ ] RL 실험용 환경(`rl/env.py`) 설계 초안 작성
 
 ## 비공개 저장소 메모
 
