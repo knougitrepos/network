@@ -5,9 +5,15 @@ __pycache__/
 
 # Data, Checkpoints, and Generated Graphs
 output/jupyter-notebook/assets/
+!output/jupyter-notebook/assets/
 *.csv
 *.png
 *.pdf
+!data/video-traces/*.csv
+!output/jupyter-notebook/assets/video_utility_comparison.png
+!output/jupyter-notebook/assets/best_fixed_vs_prediction_scatter.png
+!output/jupyter-notebook/assets/fixed_policy_grid_results.csv
+!output/jupyter-notebook/assets/best_fixed_config_selection.csv
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -27,6 +33,9 @@ venv.bak/
 .idea/
 *.swp
 *.swo
+
+# Local scratch space
+tmp/
 
 # OS generated files
 .DS_Store

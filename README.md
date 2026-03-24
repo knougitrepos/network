@@ -1,122 +1,129 @@
-# TCP Content-Aware Adaptive Batching
+# TCP Video-Aware Adaptive Batching
 
-TCP/HTTP2 전송 경로에서 `write -> buffer -> segmentation -> send` 과정의 flush/batching 정책을 비교하기 위한 실험 저장소다. 이 저장소의 현재 정확한 방향성은 [`progress_notes.md`](/C:/git/network/progress_notes.md)를 기준으로 한다.
+TCP/HTTP-style 전송 경로에서 `write -> queue -> batching -> flush -> send` 정책을 비교하는 실험 저장소다. 현재 기준선은 단순 synthetic streaming이 아니라, 실제 H.264 frame trace를 이용한 `video_stream_trace` workload와 공용 시뮬레이터 [`tcp_batching_core.py`](/C:/git/network/tcp_batching_core.py)를 중심으로 구성된다.
 
-## 기준 문서
+## 현재 기준
 
-- [`progress_notes.md`](/C:/git/network/progress_notes.md)
-  - 현재 저장소의 source of truth
-  - 문제 정의, 구현 우선순위, Heuristic -> ML -> RL 로드맵을 관리
-- [`init_plan.md`](/C:/git/network/init_plan.md)
-  - 연구계획서/발표 자료 기준의 초기 실험 설계 문서
+- 연구 범위
+  - TCP 중심 batching/flush 정책 비교
+  - packet trimming 논문은 `content importance`, `video-aware evaluation`, `edge-side adaptation 관점`만 차용
+  - `BPP/UDP/HAS`, 실제 packet trimming, kernel TCP 계측은 이번 저장소 범위 밖
+- source of truth
+  - [`init_plan.md`](/C:/git/network/init_plan.md)
+  - [`progress_notes.md`](/C:/git/network/progress_notes.md)
+  - [`tcp_batching_core.py`](/C:/git/network/tcp_batching_core.py)
 
-## 문제 정의
+## 주요 파일
 
-- 대상
-  - TCP/HTTP2 전송 경로의 flush/batching 정책
-- 입력
-  - 메시지 도착 패턴
-  - 메시지 크기
-  - 콘텐츠 타입 (`file`, `stream`)
-  - latency 제약
-  - RTT
-- 의사결정
-  - 지금 flush할지 여부
-  - 더 기다릴지 여부
-  - batch 크기와 flush 주기
-- 목적함수
-  - latency 최소화
-  - throughput 최대화
-
-## 구현 우선순위
-
-1. Heuristic baseline
-2. ML adaptive policy
-3. RL adaptive transmission policy
-
-현재 문제는 일반적인 분류/예측보다 `Policy Learning / Adaptive Control` 문제로 다루는 것을 기본 전제로 한다.
-
-## 현재 저장소 상태
-
+- [`tcp_batching_core.py`](/C:/git/network/tcp_batching_core.py)
+  - 공용 workload 생성, policy 해석, TCP 근사 시뮬레이션, fixed policy grid 평가와 최적 고정 설정 scoring
+- [`scripts/extract_video_trace.py`](/C:/git/network/scripts/extract_video_trace.py)
+  - `ffprobe` 기반 frame trace CSV 추출기
+- [`data/video-traces/bbb_720p_trace.csv`](/C:/git/network/data/video-traces/bbb_720p_trace.csv)
+  - 10초 Big Buck Bunny 720p 샘플에서 추출한 frame-level trace
 - [`output/jupyter-notebook/tcp-content-aware-batching.ipynb`](/C:/git/network/output/jupyter-notebook/tcp-content-aware-batching.ipynb)
-  - heuristic baseline 비교
-  - `fixed_sweep`, `pick_oracle`
-  - `RandomForestRegressor` 기반 `ml_regression_adaptive`
-  - `progress_notes.md` 기준 feature (`message_size`, `inter_arrival_time`, `queue_size`, `elapsed_time_since_last_flush`, `estimated_rtt`)
-  - 시나리오별 fixed sweep bounds 기반 `candidate_score`, `oracle_score_gap`
-  - repo root 기준 artifact export
-  - heatmap / Pareto scatter / CSV export
-- [`progress_notes.md`](/C:/git/network/progress_notes.md)
-  - Heuristic -> ML -> RL 방향성 메모
+  - baseline orchestration notebook
 - [`rl/env.py`](/C:/git/network/rl/env.py)
-  - RL 실험용 환경 스켈레톤(state/action/reward/reset/step)
-- [`rl/README.md`](/C:/git/network/rl/README.md)
-  - RL 상태/행동/보상 정의, 평가 프로토콜/재현성 규칙 초안
-- [`init_plan.md`](/C:/git/network/init_plan.md)
-  - 초기 실험 설계와 Mermaid 흐름도
+  - 아직 baseline 공용 시뮬레이터에 연결되지 않은 RL 환경 초안
 
-## 실험 구성
-
-### 워크로드
+## Workloads
 
 - `static_file`
-  - 정적 파일 chunk 전송
-  - throughput, goodput, syscall 감소 중심으로 해석
-- `dynamic_stream`
-  - 지속적으로 갱신되는 streaming 메시지 전송
-  - latency, staleness, syscall 감소 중심으로 해석
+  - bulk file chunk 전송
+  - `file_size_bytes`, `chunk_size_bytes`, `generation_gap_ms`
+  - throughput/goodput/flush 효율 해석 중심
+- `video_stream_trace`
+  - 실제 frame trace 기반 전송
+  - `trace_csv_path`, `playback_buffer_ms`, `loop_count`
+  - late frame, keyframe 보호, GOP decodability 해석 중심
 
-### 정책 단계
+## 정책 집합
 
 - `immediate`
-- `fixed_batch`
-- `heuristic_adaptive`
+- `fixed_size`
+- `fixed_time`
+- `fixed_hybrid`
+- `heuristic_frame_aware`
 - `ml_regression_adaptive`
-- `rl_adaptive`
-  - 아직 미구현
 
-### 핵심 지표
+`heuristic_frame_aware`는 파일 전송에서는 BDP 기반 batch 규칙을, 비디오 전송에서는 frame type과 deadline slack을 반영한 flush 규칙을 사용한다. `ml_regression_adaptive`는 `fixed_hybrid` grid에서 얻은 `best fixed config`의 `batch_bytes`, `flush_interval_ms`를 `RandomForestRegressor` 두 개로 근사한다.
 
-- `latency_mean_ms`
-- `latency_p95_ms`
-- `throughput_mbps`
-- `goodput_bytes`
-- `syscall_count`
-- `staleness_penalty`
+## 핵심 지표
 
-## 실행 방법
+- 공통
+  - `latency_mean_ms`
+  - `latency_p95_ms`
+  - `throughput_mbps`
+  - `goodput_bytes`
+  - `flush_count`
+  - `mean_batch_size_bytes`
+- 비디오 유틸리티
+  - `deadline_miss_ms_sum`
+  - `late_frame_ratio`
+  - `keyframe_late_ratio`
+  - `decodable_gop_ratio`
+  - `useful_goodput_bytes`
 
-1. Jupyter에서 [`output/jupyter-notebook/tcp-content-aware-batching.ipynb`](/C:/git/network/output/jupyter-notebook/tcp-content-aware-batching.ipynb)를 연다.
-2. 셀을 위에서 아래로 순서대로 실행한다.
-3. 필요한 경우 노트북이 `numpy`, `pandas`, `matplotlib`, `seaborn`, `scikit-learn`을 설치한다.
-4. 실행 위치와 무관하게 결과는 저장소 루트 기준 [`output/jupyter-notebook/assets/`](/C:/git/network/output/jupyter-notebook/assets)에 PNG/CSV로 저장된다.
+## Objective Score
 
-## 현재 검증 메모
+시나리오별 `fixed_hybrid` grid 결과를 min-max 정규화한 뒤 scalar score를 계산한다.
 
-- 2026-03-09 기준으로 노트북 코드 셀 순차 실행 검증을 완료했다.
-- 기존의 단일-row 정규화 scoring 버그는 제거됐고, 현재는 같은 시나리오의 fixed sweep 결과를 기준으로 ML/heuristic 후보를 평가한다.
-- 현재 holdout grid에서는 `ml_regression_adaptive`와 `heuristic_adaptive`가 같은 `batch/flush` 조합을 선택해 동일한 성능을 보인다.
-- 이 상태는 scoring 버그가 아니라 현재 시나리오 공간에서 두 정책이 아직 분리되지 않은 결과다.
+- `static_file`
+  - `throughput_mbps 0.40`
+  - `goodput_bytes 0.25`
+  - `latency_p95_ms 0.20` 역방향
+  - `flush_count 0.15` 역방향
+- `video_stream_trace`
+  - `decodable_gop_ratio 0.30`
+  - `late_frame_ratio 0.25` 역방향
+  - `keyframe_late_ratio 0.20` 역방향
+  - `useful_goodput_bytes 0.15`
+  - `latency_p95_ms 0.10` 역방향
 
-## 현재 산출물
+## 재현 방법
+
+### 1. 비디오 trace 재생성
+
+`ffprobe`와 `ffmpeg`가 PATH에 있다고 가정한다. 이 저장소에서는 `py -3.9`를 기준으로 CLI 예시를 맞춘다.
+
+```powershell
+py -3.9 scripts/extract_video_trace.py `
+  --input tmp/video-traces/bbb_720_10s.mp4 `
+  --output data/video-traces/bbb_720p_trace.csv `
+  --playback-buffer-ms 50
+```
+
+### 2. 노트북 실행
+
+```powershell
+py -3.9 -m jupyterlab
+```
+
+이후 [`output/jupyter-notebook/tcp-content-aware-batching.ipynb`](/C:/git/network/output/jupyter-notebook/tcp-content-aware-batching.ipynb)를 위에서 아래로 실행한다.
+
+### 3. 산출물
+
+노트북 실행 시 아래 파일이 갱신된다.
 
 - `output/jupyter-notebook/assets/reference_policy_overview.png`
+- `output/jupyter-notebook/assets/video_utility_comparison.png`
 - `output/jupyter-notebook/assets/fixed_batch_heatmap.png`
 - `output/jupyter-notebook/assets/policy_pareto_scatter.png`
+- `output/jupyter-notebook/assets/best_fixed_vs_prediction_scatter.png`
 - `output/jupyter-notebook/assets/reference_summary.csv`
-- `output/jupyter-notebook/assets/fixed_sweep_results.csv`
-- `output/jupyter-notebook/assets/oracle_selection.csv`
+- `output/jupyter-notebook/assets/fixed_policy_grid_results.csv`
+- `output/jupyter-notebook/assets/best_fixed_config_selection.csv`
 - `output/jupyter-notebook/assets/ml_eval_results.csv`
 
-## 다음 단계
+## 현재 상태
 
-- [x] `fixed_sweep`, `pick_oracle`
-- [x] `RandomForestRegressor` 기반 `ml_regression_adaptive`
-- [x] heatmap / Pareto scatter / CSV export
-- [x] RL 실험용 `rl/env.py` 설계 초안 문서화 (`rl/env.py`, `rl/README.md`)
+- [x] 공용 baseline simulator를 [`tcp_batching_core.py`](/C:/git/network/tcp_batching_core.py)로 분리
+- [x] Big Buck Bunny trace CSV 생성 및 로딩 경로 반영
+- [x] baseline 정책군을 `fixed_size`/`fixed_time`/`fixed_hybrid`/`heuristic_frame_aware`/`ml_regression_adaptive`로 재정의
+- [x] notebook orchestration을 공용 모듈 기반으로 재작성
+- [ ] RL 환경을 공용 시뮬레이터와 통합
 
-## 작업 원칙
+## 주의사항
 
-- 방향성 판단은 항상 `progress_notes.md`를 우선한다.
-- 연구계획서/발표자료 정합성이 필요할 때 `init_plan.md`를 함께 참고한다.
-- 실험 축, 정책 단계, 결과 해석 방식이 바뀌면 README와 노트북 설명도 같이 갱신한다.
+- [`rl/env.py`](/C:/git/network/rl/env.py)는 아직 placeholder physics를 사용한다.
+- 이번 저장소는 연구 발표용 비교 실험이며 실제 kernel TCP trace나 실제 edge packet trimming 구현은 포함하지 않는다.
