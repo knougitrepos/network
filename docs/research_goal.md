@@ -120,8 +120,8 @@ packet trimming             계층 결정에 ML/RL로 반영"
 
 ### cross-layer 통합 강화
 
-- NetworkState에 동적 추정값 반영 (estimated RTT/bw — Borisov 관점)
-- select_action() 입력에 현재 큐 상태 추가 (배칭 효과와 중요도의 상호작용)
+- ~~NetworkState에 동적 추정값 반영 (estimated RTT/bw — Borisov 관점)~~ → **완료** (queue_bytes, estimated_batch_gain 추가)
+- ~~select_action() 입력에 현재 큐 상태 추가 (배칭 효과와 중요도의 상호작용)~~ → **완료** (배칭 유보 로직 구현)
 
 ### 시뮬레이션 환경 확장
 

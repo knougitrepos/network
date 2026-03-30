@@ -1,4 +1,4 @@
-reference_case,workload_kind,policy_label,latency_mean_ms,latency_p95_ms,throughput_mbps,goodput_bytes,flush_count,late_frame_ratio,keyframe_late_ratio,decodable_gop_ratio,useful_goodput_bytes,best_fixed_score_gap
+reference_label,workload_kind,comparison,latency_mean_ms,latency_p95_ms,throughput_mbps,goodput_bytes,flush_count,late_frame_ratio,keyframe_late_ratio,decodable_gop_ratio,useful_goodput_bytes,oracle_score_gap
 static_reference,static_file,fixed_hybrid_8192_10ms,28867.256599999688,54832.16529999935,2.3176577058422696,16777216.0,2048,0.0,0.0,0.0,16777216.0,0.5150074268206735
 static_reference,static_file,fixed_size_8192,28867.256599999688,54832.16529999935,2.3176577058422696,16777216.0,2048,0.0,0.0,0.0,16777216.0,0.5150074268206735
 static_reference,static_file,fixed_time_10ms,3693.56374375,6868.162500000001,18.52330006167361,16777216.0,21,0.0,0.0,0.0,16777216.0,0.0
