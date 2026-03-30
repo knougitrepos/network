@@ -15,6 +15,8 @@ class PolicyConfig:
     name: str
     batch_bytes: Optional[int] = None
     flush_interval_ms: Optional[float] = None
+    available_paths: int = 1
+    model_path: Optional[str] = None
 
 
 def _resolve_static_heuristic(
@@ -78,6 +80,10 @@ def resolve_policy(
     if policy_cfg.name in {"fixed_hybrid", "ml_regression_adaptive"}:
         batch = 8192 if policy_cfg.batch_bytes is None else int(policy_cfg.batch_bytes)
         flush_ms = 10.0 if policy_cfg.flush_interval_ms is None else float(policy_cfg.flush_interval_ms)
+        return batch, flush_ms
+    if policy_cfg.name in {"frame_action_adaptive", "frame_action_ml_adaptive"}:
+        batch = 4 * transport_cfg.mss_bytes if policy_cfg.batch_bytes is None else int(policy_cfg.batch_bytes)
+        flush_ms = 8.0 if policy_cfg.flush_interval_ms is None else float(policy_cfg.flush_interval_ms)
         return batch, flush_ms
     if policy_cfg.name == "heuristic_frame_aware":
         if isinstance(workload_cfg, StaticFileConfig):

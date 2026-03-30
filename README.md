@@ -13,6 +13,8 @@ docs/
   changelog/                   # 코드 변경 기록 (시간순)
     20260315_baseline_framework.md
     20260329_frame_aware_refactoring.md
+    20260330_frame_action_simulation_hook.md
+    20260330_ml_importance_scorer_scaffold.md
   analyze/                     # 분석 요청 기록 (시간순)
     20260309_code_direction_review.md
     20260325_improvement_analysis.md
@@ -38,6 +40,10 @@ rl/
 
 scripts/
   extract_video_trace.py   # ffprobe 기반 frame trace CSV 추출
+  build_delta_qoe_labels.py # ΔQoE proxy 라벨 생성 (v2 학습용 초안)
+  train_importance_model.py # Stage A v2 bootstrap 학습/저장 (pickle)
+  smoke_policy_regression.py # 정책 핵심 경로 회귀 스모크 점검
+  export_policy_action_report.py # 정책 요약 CSV/그래프 산출
 
 data/video-traces/         # H.264 frame trace CSV
 output/jupyter-notebook/   # 실험 노트북 및 산출물
@@ -78,11 +84,14 @@ tcp_batching_core.py       # 하위 호환 shim (기존 import 유지)
 
 ### Legacy (초기 baseline 정책)
 - `immediate`, `fixed_size`, `fixed_time`, `fixed_hybrid`
-- `heuristic_frame_aware`, `ml_regression_adaptive`
+- `heuristic_frame_aware`, `ml_regression_adaptive`, `frame_action_adaptive`, `frame_action_ml_adaptive`
 
 ### Frame-aware (프레임 중요도 기반 — 핵심)
 - `HeuristicImportanceScorer`: H.264 I/P/B type + deadline slack + GOP 위치 → 동적 중요도 점수 (v1)
+- `MLImportanceScorer`: pickle 모델 기반 추론 + 실패 시 heuristic 폴백 (v2 스캐폴딩)
 - `FrameAction`: importance score + deadline slack → 전송 모드/경로/중복 결정
+- `frame_action_adaptive`: Stage A/B를 `run_simulation()` 경로에 연결하여 프레임별 `importance_score`/`selected_action`을 추적하고 결과 메트릭으로 반환
+- `frame_action_ml_adaptive`: `MLImportanceScorer`를 동일 경로에 연결해 v2 실험을 준비하고, 결과 컬럼 `importance_scorer_type`으로 scorer 상태를 추적
 - 향후: ML scorer (v2), RL scorer (v3)
 
 ## 평가 지표
@@ -104,10 +113,36 @@ py -3.9 scripts/extract_video_trace.py `
   --output data/video-traces/bbb_720p_trace.csv `
   --playback-buffer-ms 50
 
+py -3.9 scripts/build_delta_qoe_labels.py `
+  --trace data/video-traces/bbb_720p_trace.csv `
+  --output data/video-traces/bbb_720p_delta_qoe_labels.csv
+
+py -3.9 scripts/train_importance_model.py `
+  --trace data/video-traces/bbb_720p_trace.csv `
+  --output tmp/models/importance_rf.pkl `
+  --playback-buffer-ms 50
+
+py -3.9 scripts/train_importance_model.py `
+  --trace data/video-traces/bbb_720p_trace.csv `
+  --label-csv data/video-traces/bbb_720p_delta_qoe_labels.csv `
+  --label-column delta_qoe_norm `
+  --output tmp/models/importance_rf_delta_qoe.pkl
+
+py -3.9 scripts/smoke_policy_regression.py `
+  --trace data/video-traces/bbb_720p_trace.csv `
+  --model-path tmp/models/importance_rf.pkl
+
+py -3.9 scripts/export_policy_action_report.py `
+  --trace data/video-traces/bbb_720p_trace.csv `
+  --model-path tmp/models/importance_rf.pkl `
+  --output-csv output/jupyter-notebook/assets/policy_action_summary.csv
+
 py -3.9 -m jupyterlab
 ```
 
 이후 `output/jupyter-notebook/tcp-content-aware-batching.ipynb`를 실행한다.
+
+`frame_action_ml_adaptive` 정책에서 학습 모델을 쓰려면 `PolicyConfig(model_path="tmp/models/importance_rf.pkl")`를 전달한다.
 
 ## 주의사항
 

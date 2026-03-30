@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import math
+from collections import Counter
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -25,19 +27,31 @@ from core.workload import (
     scenario_id,
     serialize_workload_config,
 )
+from policy.action import FrameAction, select_action
+from policy.importance import HeuristicImportanceScorer, MLImportanceScorer, NetworkState
 from policy.legacy import PolicyConfig, resolve_policy
+
+
+logger = logging.getLogger(__name__)
 
 
 def _policy_uses_timer(policy_cfg: PolicyConfig) -> bool:
     return policy_cfg.name in {
-        "fixed_time", "fixed_hybrid", "heuristic_frame_aware", "ml_regression_adaptive",
+        "fixed_time", "fixed_hybrid", "heuristic_frame_aware", "ml_regression_adaptive", "frame_action_adaptive", "frame_action_ml_adaptive",
     }
 
 
 def _policy_uses_size(policy_cfg: PolicyConfig) -> bool:
     return policy_cfg.name in {
-        "fixed_size", "fixed_hybrid", "heuristic_frame_aware", "ml_regression_adaptive",
+        "fixed_size", "fixed_hybrid", "heuristic_frame_aware", "ml_regression_adaptive", "frame_action_adaptive", "frame_action_ml_adaptive",
     }
+
+
+def _policy_uses_frame_actions(policy_cfg: PolicyConfig, workload_cfg: WorkloadConfig) -> bool:
+    return (
+        policy_cfg.name in {"frame_action_adaptive", "frame_action_ml_adaptive"}
+        and isinstance(workload_cfg, VideoTraceConfig)
+    )
 
 
 def run_simulation(
@@ -71,6 +85,34 @@ def run_simulation(
     first_arrival_ms = float(events["event_time_ms"].iloc[0]) if not events.empty else 0.0
     last_completion_ms = first_arrival_ms
 
+    frame_action_mode = _policy_uses_frame_actions(policy_cfg, workload_cfg)
+    available_paths = max(1, int(getattr(policy_cfg, "available_paths", 1)))
+    scorer = None
+    importance_scorer_type = "none"
+    if frame_action_mode and isinstance(workload_cfg, VideoTraceConfig):
+        playback_buffer_ms = float(workload_cfg.playback_buffer_ms)
+        if policy_cfg.name == "frame_action_ml_adaptive":
+            try:
+                scorer = MLImportanceScorer(
+                    model_path=policy_cfg.model_path,
+                    playback_buffer_ms=playback_buffer_ms,
+                )
+                importance_scorer_type = "ml" if scorer.model is not None else "ml_fallback_heuristic"
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Failed to initialize MLImportanceScorer; fallback to heuristic scorer: %s",
+                    exc,
+                )
+                scorer = HeuristicImportanceScorer(playback_buffer_ms=playback_buffer_ms)
+                importance_scorer_type = "heuristic_fallback"
+        else:
+            scorer = HeuristicImportanceScorer(playback_buffer_ms=playback_buffer_ms)
+            importance_scorer_type = "heuristic"
+
+    action_counts: Counter[str] = Counter()
+    importance_values: List[float] = []
+    dropped_frame_count = 0
+
     def flush(now_ms: float) -> None:
         nonlocal queue_rows, queue_bytes, batch_start_ms
         nonlocal flush_count, total_payload, useful_goodput_bytes
@@ -79,7 +121,7 @@ def run_simulation(
         if not queue_rows:
             return
 
-        payload_bytes = int(sum(int(row["payload_bytes"]) for row in queue_rows))
+        payload_bytes = int(sum(int(row.get("tx_payload_bytes", row["payload_bytes"])) for row in queue_rows))
         flush_start_ms = max(now_ms, last_link_release_ms)
         tx_time_ms = (payload_bytes * 8.0) / (transport_cfg.bandwidth_mbps * 1_000_000.0) * 1000.0
         ack_penalty_ms = (
@@ -111,6 +153,9 @@ def run_simulation(
                 "key_frame": int(row["key_frame"]),
                 "payload_bytes": int(row["payload_bytes"]),
                 "on_time": on_time,
+                "dropped": False,
+                "action": str(row.get("selected_action", "LEGACY")),
+                "importance_score": float(row.get("importance_score", np.nan)),
             })
 
         batch_sizes.append(float(payload_bytes))
@@ -126,6 +171,61 @@ def run_simulation(
 
     for row in events.itertuples(index=False):
         now_ms = float(row.event_time_ms)
+        selected_action: Optional[FrameAction] = None
+        selected_action_name = "LEGACY"
+        importance_score = float("nan")
+        deadline_slack_ms = float("inf")
+        tx_payload_bytes = int(row.payload_bytes)
+
+        if frame_action_mode and scorer is not None:
+            frame_dict = {
+                "event_time_ms": now_ms,
+                "display_deadline_ms": float(row.display_deadline_ms),
+                "frame_type": str(row.frame_type),
+                "key_frame": int(row.key_frame),
+                "payload_bytes": int(row.payload_bytes),
+                "gop_id": int(row.gop_id),
+            }
+            network = NetworkState(
+                rtt_ms=float(transport_cfg.rtt_ms),
+                bandwidth_mbps=float(transport_cfg.bandwidth_mbps),
+                buffer_level_ms=max(0.0, float(row.display_deadline_ms) - max(now_ms, last_link_release_ms)),
+            )
+            importance_score = scorer.score(frame_dict, network)
+            deadline_slack_ms = float(row.display_deadline_ms) - max(now_ms, last_link_release_ms)
+            selected_action = select_action(
+                importance_score,
+                deadline_slack_ms,
+                network,
+                available_paths=available_paths,
+            )
+            selected_action_name = selected_action.name
+            action_counts[selected_action_name] += 1
+            importance_values.append(importance_score)
+
+            if selected_action == FrameAction.DROP:
+                dropped_frame_count += 1
+                deadline_miss_values.append(max(0.0, -deadline_slack_ms))
+                frame_records.append({
+                    "gop_id": int(row.gop_id),
+                    "key_frame": int(row.key_frame),
+                    "payload_bytes": int(row.payload_bytes),
+                    "on_time": False,
+                    "dropped": True,
+                    "action": selected_action_name,
+                    "importance_score": float(importance_score),
+                })
+                logger.debug(
+                    "Frame dropped by policy: event_idx=%s gop_id=%s slack_ms=%.3f score=%.3f",
+                    int(row.event_idx),
+                    int(row.gop_id),
+                    deadline_slack_ms,
+                    importance_score,
+                )
+                continue
+
+            if selected_action == FrameAction.DUPLICATE and available_paths > 1:
+                tx_payload_bytes = int(row.payload_bytes) * 2
 
         if queue_rows and batch_start_ms is not None:
             if policy_cfg.name == "heuristic_frame_aware" and isinstance(workload_cfg, VideoTraceConfig):
@@ -150,13 +250,25 @@ def run_simulation(
             "gop_id": int(row.gop_id),
             "importance_rank": int(row.importance_rank),
             "display_deadline_ms": float(row.display_deadline_ms),
+            "importance_score": float(importance_score),
+            "deadline_slack_ms": float(deadline_slack_ms),
+            "selected_action": selected_action_name,
+            "tx_payload_bytes": int(tx_payload_bytes),
         }
         queue_rows.append(queue_row)
-        queue_bytes += int(row.payload_bytes)
+        queue_bytes += int(tx_payload_bytes)
         queue_sizes.append(float(queue_bytes))
         flush_ages.append(0.0 if batch_start_ms is None else now_ms - batch_start_ms)
 
         if policy_cfg.name == "immediate":
+            flush(now_ms)
+            continue
+
+        if frame_action_mode and selected_action in {FrameAction.RELIABLE_MULTI, FrameAction.DUPLICATE}:
+            flush(now_ms)
+            continue
+
+        if frame_action_mode and selected_action == FrameAction.RELIABLE_SINGLE and deadline_slack_ms <= max(fi_ms, 1.0):
             flush(now_ms)
             continue
 
@@ -223,6 +335,14 @@ def run_simulation(
         keyframe_late_ratio = 0.0
         decodable_gop_ratio = 0.0
 
+    frame_count = int(len(events)) if isinstance(workload_cfg, VideoTraceConfig) else 0
+    drop_ratio = float(dropped_frame_count / frame_count) if frame_count > 0 else 0.0
+    mean_importance_score = float(np.mean(importance_values)) if importance_values else 0.0
+    action_reliable_single_count = int(action_counts.get(FrameAction.RELIABLE_SINGLE.name, 0))
+    action_reliable_multi_count = int(action_counts.get(FrameAction.RELIABLE_MULTI.name, 0))
+    action_unreliable_count = int(action_counts.get(FrameAction.UNRELIABLE.name, 0))
+    action_duplicate_count = int(action_counts.get(FrameAction.DUPLICATE.name, 0))
+
     return {
         **serialize_workload_config(workload_cfg),
         **serialize_transport_config(transport_cfg),
@@ -246,6 +366,17 @@ def run_simulation(
         "keyframe_late_ratio": keyframe_late_ratio,
         "decodable_gop_ratio": decodable_gop_ratio,
         "useful_goodput_bytes": float(useful_goodput_bytes),
+        "frame_action_mode": int(frame_action_mode),
+        "importance_scorer_type": importance_scorer_type,
+        "available_paths": int(available_paths),
+        "mean_importance_score": mean_importance_score,
+        "dropped_frame_count": int(dropped_frame_count),
+        "dropped_frame_ratio": drop_ratio,
+        "action_reliable_single_count": action_reliable_single_count,
+        "action_reliable_multi_count": action_reliable_multi_count,
+        "action_unreliable_count": action_unreliable_count,
+        "action_duplicate_count": action_duplicate_count,
+        "action_drop_count": int(dropped_frame_count),
         "best_fixed_score_gap": 0.0,
     }
 
