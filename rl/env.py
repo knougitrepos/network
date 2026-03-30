@@ -1,289 +1,254 @@
-"""RL 실험용 TCP Content-Aware Batching 환경 초안.
+"""RL 실험용 프레임 단위 전송 스케줄링 환경.
 
-이 파일은 외부 RL 프레임워크에 종속되지 않는 최소 환경 인터페이스를 제공한다.
-Gymnasium 스타일의 `reset()/step()` 사용 패턴을 따르며,
-기존 시뮬레이터 함수(`run_simulation`)와의 연결을 쉽게 하기 위해
-정책 입력/출력 명세와 reward 계산 규칙을 명시적으로 분리했다.
+core.simulator / policy.importance / policy.action / eval.metrics를 활용하여
+Gymnasium 스타일 reset()/step() 인터페이스를 제공한다.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from enum import IntEnum
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
-import math
-import random
+
+import numpy as np
+import pandas as pd
+
+from core.transport import TransportConfig, PathState, TCPTransportModel
+from core.workload import (
+    VideoTraceConfig,
+    WorkloadConfig,
+    generate_workload,
+    frame_interval_ms,
+)
+from eval.metrics import compute_all_video_metrics
+from policy.action import FrameAction, select_action
+from policy.importance import HeuristicImportanceScorer, NetworkState
 
 
-class ContentType(IntEnum):
-    """콘텐츠 타입 인코딩."""
-
-    FILE = 0
-    STREAM = 1
-
-
-class Action(IntEnum):
-    """RL 정책이 선택할 수 있는 행동 집합."""
-
-    WAIT = 0
-    FLUSH = 1
-    INCREASE_BATCH = 2
-    DECREASE_BATCH = 3
-
-
-@dataclass(frozen=True)
+@dataclass
 class EnvConfig:
-    """환경 설정값.
+    """환경 설정값."""
+    workload_cfg: Optional[WorkloadConfig] = None
+    transport_cfg: Optional[TransportConfig] = None
 
-    alpha_latency: latency 패널티 가중치
-    beta_staleness: staleness 패널티 가중치
-    gamma_syscall: flush 호출 패널티 가중치
-    """
+    max_steps: int = 500
+    seed: int = 42
 
-    max_steps: int = 200
-    initial_batch_size: int = 16 * 1024
-    min_batch_size: int = 2 * 1024
-    max_batch_size: int = 64 * 1024
-    batch_size_step: int = 2 * 1024
-
-    alpha_latency: float = 0.8
-    beta_staleness: float = 0.5
-    gamma_syscall: float = 0.2
-
-    seed: Optional[int] = 42
+    alpha_qoe: float = 1.0
+    beta_latency: float = 0.3
+    gamma_drop_penalty: float = 0.5
 
 
 @dataclass
-class Message:
-    """단일 메시지 이벤트."""
-
-    size_bytes: int
-    inter_arrival_ms: float
-    content_type: ContentType
-
-
-@dataclass
-class StepMetrics:
-    """스텝 단위 측정치."""
-
-    latency_ms: float = 0.0
-    throughput_mbps: float = 0.0
-    staleness_penalty: float = 0.0
-    syscall_count: int = 0
+class StepResult:
+    state: List[float] = field(default_factory=list)
+    reward: float = 0.0
+    terminated: bool = False
+    truncated: bool = False
+    info: Dict[str, float] = field(default_factory=dict)
 
 
-class TCPBatchingEnv:
-    """TCP content-aware batching RL 환경 초안.
+class FrameSchedulingEnv:
+    """프레임 단위 전송 스케줄링 RL 환경.
 
-    상태 벡터(state):
-      - queue_size_bytes
-      - queue_len
-      - mean_message_size
-      - estimated_message_rate
-      - elapsed_time_since_last_flush_ms
-      - estimated_rtt_ms
-      - current_batch_size
-      - content_type(0=file, 1=stream)
+    state vector (12차원):
+      0: frame_type_encoded (I=0, P=1, B=2, FILE=3)
+      1: importance_score
+      2: deadline_slack_ms
+      3: payload_bytes
+      4: gop_progress (현재 GOP 내 진행률)
+      5: queue_bytes (누적 대기 바이트)
+      6: rtt_ms
+      7: bandwidth_mbps
+      8: buffer_level_ms
+      9: late_frame_ratio_so_far
+     10: step_index (정규화)
+     11: key_frame
 
-    행동(action):
-      - WAIT(0)
-      - FLUSH(1)
-      - INCREASE_BATCH(2)
-      - DECREASE_BATCH(3)
-
-    보상(reward):
-      throughput_mbps
-      - alpha_latency * latency_ms
-      - beta_staleness * staleness_penalty
-      - gamma_syscall * syscall_count
+    action space: FrameAction enum (0~4)
     """
 
-    def __init__(self, config: Optional[EnvConfig] = None):
+    FRAME_TYPE_MAP = {"I": 0.0, "P": 1.0, "B": 2.0, "FILE": 3.0}
+
+    def __init__(self, config: Optional[EnvConfig] = None) -> None:
         self.config = config or EnvConfig()
-        self._rng = random.Random(self.config.seed)
+        self._rng = np.random.RandomState(self.config.seed)
 
+        if self.config.workload_cfg is None:
+            from core.workload import StaticFileConfig
+            self.config.workload_cfg = StaticFileConfig(file_size_bytes=1_000_000, chunk_size_bytes=4096)
+        if self.config.transport_cfg is None:
+            self.config.transport_cfg = TransportConfig(rtt_ms=20.0, bandwidth_mbps=10.0, delayed_ack_ms=20.0)
+
+        self.transport_model = TCPTransportModel(self.config.transport_cfg)
+        self.scorer = HeuristicImportanceScorer(
+            playback_buffer_ms=getattr(self.config.workload_cfg, "playback_buffer_ms", 50.0),
+        )
+
+        self.events: pd.DataFrame = pd.DataFrame()
         self.step_count = 0
-        self.current_batch_size = self.config.initial_batch_size
-        self.elapsed_since_last_flush_ms = 0.0
-
-        self.queue: List[Message] = []
-        self.last_metrics = StepMetrics()
-        self.estimated_rtt_ms = 20.0
+        self.current_frame_idx = 0
+        self.frame_records: List[Dict[str, object]] = []
+        self.total_latency_ms = 0.0
+        self.last_completion_ms = 0.0
+        self.queue_bytes = 0
+        self.late_count = 0
+        self.drop_count = 0
 
     def reset(self, seed: Optional[int] = None) -> Tuple[List[float], Dict[str, float]]:
         if seed is not None:
-            self._rng.seed(seed)
-        elif self.config.seed is not None:
-            self._rng.seed(self.config.seed)
-
+            self._rng = np.random.RandomState(seed)
+        self.events = generate_workload(self.config.workload_cfg)
         self.step_count = 0
-        self.current_batch_size = self.config.initial_batch_size
-        self.elapsed_since_last_flush_ms = 0.0
-        self.queue.clear()
-        self.last_metrics = StepMetrics()
-        self.estimated_rtt_ms = self._sample_rtt()
-
-        self._enqueue_random_message()
+        self.current_frame_idx = 0
+        self.frame_records = []
+        self.total_latency_ms = 0.0
+        self.last_completion_ms = 0.0
+        self.queue_bytes = 0
+        self.late_count = 0
+        self.drop_count = 0
         return self._get_state(), self._get_info()
 
-    def step(self, action: int) -> Tuple[List[float], float, bool, bool, Dict[str, float]]:
+    def step(self, action_idx: int) -> Tuple[List[float], float, bool, bool, Dict[str, float]]:
         self.step_count += 1
+        action = list(FrameAction)[min(action_idx, len(FrameAction) - 1)]
 
-        if action == Action.INCREASE_BATCH:
-            self.current_batch_size = min(
-                self.current_batch_size + self.config.batch_size_step,
-                self.config.max_batch_size,
-            )
-            metrics = self._simulate_wait_step()
-        elif action == Action.DECREASE_BATCH:
-            self.current_batch_size = max(
-                self.current_batch_size - self.config.batch_size_step,
-                self.config.min_batch_size,
-            )
-            metrics = self._simulate_wait_step()
-        elif action == Action.FLUSH:
-            metrics = self._simulate_flush_step()
+        if self.current_frame_idx >= len(self.events):
+            return self._get_state(), 0.0, True, False, self._get_info()
+
+        row = self.events.iloc[self.current_frame_idx]
+        frame_dict = row.to_dict()
+        cfg = self.config.transport_cfg
+
+        network = NetworkState(
+            rtt_ms=cfg.rtt_ms,
+            bandwidth_mbps=cfg.bandwidth_mbps,
+            buffer_level_ms=max(0.0, float(row.get("display_deadline_ms", 0)) - self.last_completion_ms),
+        )
+
+        importance = self.scorer.score(frame_dict, network)
+        payload_bytes = int(row["payload_bytes"])
+        event_time_ms = float(row["event_time_ms"])
+
+        if action == FrameAction.DROP:
+            self.drop_count += 1
+            on_time = False
+            completion_ms = self.last_completion_ms
         else:
-            metrics = self._simulate_wait_step()
+            send_start_ms = max(event_time_ms, self.last_completion_ms)
+            completion_ms = self.transport_model.estimate_completion(payload_bytes, send_start_ms)
+            self.last_completion_ms = completion_ms
 
-        reward = self._compute_reward(metrics)
-        self.last_metrics = metrics
+            deadline_ms = float(row.get("display_deadline_ms", float("inf")))
+            on_time = completion_ms <= deadline_ms
+            latency_ms = completion_ms - event_time_ms
+            self.total_latency_ms += latency_ms
 
-        terminated = self.step_count >= self.config.max_steps
-        truncated = False
+        if not on_time:
+            self.late_count += 1
 
-        self._enqueue_random_message()
+        self.frame_records.append({
+            "gop_id": int(row.get("gop_id", -1)),
+            "key_frame": int(row.get("key_frame", 0)),
+            "payload_bytes": payload_bytes,
+            "on_time": on_time,
+        })
 
-        return self._get_state(), reward, terminated, truncated, self._get_info()
+        self.current_frame_idx += 1
+        terminated = self.current_frame_idx >= len(self.events) or self.step_count >= self.config.max_steps
+        reward = self._compute_reward(on_time, importance, action)
+
+        return self._get_state(), reward, terminated, False, self._get_info()
+
+    def _compute_reward(self, on_time: bool, importance: float, action: FrameAction) -> float:
+        qoe_reward = importance if on_time else -importance * 0.5
+        drop_penalty = -self.config.gamma_drop_penalty if action == FrameAction.DROP else 0.0
+        return self.config.alpha_qoe * qoe_reward + drop_penalty
 
     def _get_state(self) -> List[float]:
-        queue_size_bytes = sum(m.size_bytes for m in self.queue)
-        queue_len = len(self.queue)
-        mean_message_size = (queue_size_bytes / queue_len) if queue_len else 0.0
+        if self.current_frame_idx >= len(self.events):
+            return [0.0] * 12
 
-        total_inter_arrival = sum(m.inter_arrival_ms for m in self.queue)
-        estimated_message_rate = (1000.0 / total_inter_arrival) if total_inter_arrival > 0 else 0.0
+        row = self.events.iloc[self.current_frame_idx]
+        frame_type_str = str(row.get("frame_type", "FILE")).upper()
+        deadline_ms = float(row.get("display_deadline_ms", 0.0))
+        now_ms = float(row.get("event_time_ms", 0.0))
+        slack_ms = deadline_ms - max(now_ms, self.last_completion_ms)
 
-        content_type_value = float(self.queue[-1].content_type if self.queue else ContentType.FILE)
+        gop_id = int(row.get("gop_id", -1))
+        if gop_id >= 0:
+            gop_mask = self.events["gop_id"] == gop_id
+            gop_size = int(gop_mask.sum())
+            gop_pos = int((self.events.index[gop_mask] <= self.current_frame_idx).sum())
+            gop_progress = gop_pos / max(gop_size, 1)
+        else:
+            gop_progress = 0.0
+
+        total_frames = max(self.current_frame_idx, 1)
+        late_ratio_so_far = self.late_count / total_frames
 
         return [
-            float(queue_size_bytes),
-            float(queue_len),
-            float(mean_message_size),
-            float(estimated_message_rate),
-            float(self.elapsed_since_last_flush_ms),
-            float(self.estimated_rtt_ms),
-            float(self.current_batch_size),
-            content_type_value,
+            self.FRAME_TYPE_MAP.get(frame_type_str, 3.0),
+            self.scorer.score(row.to_dict(), NetworkState(
+                rtt_ms=self.config.transport_cfg.rtt_ms,
+                bandwidth_mbps=self.config.transport_cfg.bandwidth_mbps,
+            )),
+            slack_ms,
+            float(row["payload_bytes"]),
+            gop_progress,
+            float(self.queue_bytes),
+            float(self.config.transport_cfg.rtt_ms),
+            float(self.config.transport_cfg.bandwidth_mbps),
+            max(0.0, slack_ms),
+            late_ratio_so_far,
+            self.step_count / max(self.config.max_steps, 1),
+            float(row.get("key_frame", 0)),
         ]
 
     def _get_info(self) -> Dict[str, float]:
+        metrics = compute_all_video_metrics(self.frame_records)
         return {
-            "latency_ms": self.last_metrics.latency_ms,
-            "throughput_mbps": self.last_metrics.throughput_mbps,
-            "staleness_penalty": self.last_metrics.staleness_penalty,
-            "syscall_count": float(self.last_metrics.syscall_count),
-            "queue_len": float(len(self.queue)),
-            "batch_size": float(self.current_batch_size),
+            **{k: float(v) for k, v in metrics.items()},
+            "step_count": float(self.step_count),
+            "total_latency_ms": self.total_latency_ms,
+            "drop_count": float(self.drop_count),
         }
 
-    def _compute_reward(self, metrics: StepMetrics) -> float:
-        return (
-            metrics.throughput_mbps
-            - self.config.alpha_latency * metrics.latency_ms
-            - self.config.beta_staleness * metrics.staleness_penalty
-            - self.config.gamma_syscall * metrics.syscall_count
-        )
 
-    def _simulate_wait_step(self) -> StepMetrics:
-        # wait 시 queue 증가/지연 누적
-        wait_ms = self._rng.uniform(1.0, 8.0)
-        self.elapsed_since_last_flush_ms += wait_ms
-
-        queue_size = sum(m.size_bytes for m in self.queue)
-        staleness = self.elapsed_since_last_flush_ms * (1.0 + 0.5 * (queue_size > self.current_batch_size))
-
-        return StepMetrics(
-            latency_ms=wait_ms,
-            throughput_mbps=max(0.05, queue_size / 1_000_000),
-            staleness_penalty=staleness,
-            syscall_count=0,
-        )
-
-    def _simulate_flush_step(self) -> StepMetrics:
-        queue_size = sum(m.size_bytes for m in self.queue)
-        if queue_size == 0:
-            return StepMetrics(latency_ms=0.2, throughput_mbps=0.0, staleness_penalty=0.0, syscall_count=1)
-
-        # 기존 run_simulation 결과와 연결할 때는 아래 계산을 대체하도록 설계
-        effective_bandwidth_mbps = max(1.0, 120.0 - 0.2 * self.estimated_rtt_ms)
-        transmit_time_ms = (queue_size * 8.0) / (effective_bandwidth_mbps * 1_000.0)
-        latency_ms = self.elapsed_since_last_flush_ms + transmit_time_ms + self.estimated_rtt_ms * 0.25
-
-        throughput_mbps = (queue_size * 8.0) / max(transmit_time_ms, 1e-6) / 1_000.0
-        staleness = max(0.0, self.elapsed_since_last_flush_ms - 3.0)
-
-        self.queue.clear()
-        self.elapsed_since_last_flush_ms = 0.0
-        self.estimated_rtt_ms = self._sample_rtt()
-
-        return StepMetrics(
-            latency_ms=latency_ms,
-            throughput_mbps=throughput_mbps,
-            staleness_penalty=staleness,
-            syscall_count=1,
-        )
-
-    def _enqueue_random_message(self) -> None:
-        content_type = ContentType.STREAM if self._rng.random() < 0.45 else ContentType.FILE
-        if content_type == ContentType.STREAM:
-            size = int(self._rng.uniform(200, 4_000))
-            inter_arrival = self._rng.uniform(0.4, 3.0)
-        else:
-            size = int(self._rng.uniform(4_000, 32_000))
-            inter_arrival = self._rng.uniform(1.0, 6.0)
-
-        self.queue.append(
-            Message(size_bytes=size, inter_arrival_ms=inter_arrival, content_type=content_type)
-        )
-
-    def _sample_rtt(self) -> float:
-        # log-normal 분포로 tail latency를 가볍게 반영
-        return min(180.0, max(5.0, math.exp(self._rng.normalvariate(3.0, 0.35))))
-
-
-def run_episode(env: TCPBatchingEnv, max_steps: Optional[int] = None) -> Dict[str, float]:
-    """랜덤 정책 기반 간단 smoke 실행 유틸리티."""
-
+def run_episode(env: FrameSchedulingEnv, max_steps: Optional[int] = None) -> Dict[str, float]:
+    """heuristic 정책 기반 smoke 실행 유틸리티."""
     state, _ = env.reset()
-    del state
-
     steps = max_steps or env.config.max_steps
     reward_sum = 0.0
-    latency_sum = 0.0
-    throughput_sum = 0.0
 
     for _ in range(steps):
-        action = env._rng.choice(list(Action))
-        _, reward, done, _, info = env.step(int(action))
+        if env.current_frame_idx >= len(env.events):
+            break
+        row = env.events.iloc[env.current_frame_idx]
+        cfg = env.config.transport_cfg
+        network = NetworkState(rtt_ms=cfg.rtt_ms, bandwidth_mbps=cfg.bandwidth_mbps)
+        importance = env.scorer.score(row.to_dict(), network)
+        deadline_ms = float(row.get("display_deadline_ms", float("inf")))
+        slack_ms = deadline_ms - max(float(row["event_time_ms"]), env.last_completion_ms)
+        action = select_action(importance, slack_ms, network)
+        action_idx = list(FrameAction).index(action)
 
+        _, reward, done, _, info = env.step(action_idx)
         reward_sum += reward
-        latency_sum += info["latency_ms"]
-        throughput_sum += info["throughput_mbps"]
-
         if done:
             break
 
-    executed_steps = float(env.step_count)
     return {
         "episode_reward": reward_sum,
-        "latency_mean_ms": latency_sum / max(executed_steps, 1.0),
-        "throughput_mean_mbps": throughput_sum / max(executed_steps, 1.0),
-        "steps": executed_steps,
+        **env._get_info(),
     }
 
 
 if __name__ == "__main__":
-    environment = TCPBatchingEnv(EnvConfig(seed=7, max_steps=50))
-    summary = run_episode(environment)
+    from core.workload import StaticFileConfig
+    env = FrameSchedulingEnv(EnvConfig(
+        workload_cfg=StaticFileConfig(file_size_bytes=100_000, chunk_size_bytes=4096),
+        max_steps=50,
+        seed=7,
+    ))
+    summary = run_episode(env)
     print(summary)
