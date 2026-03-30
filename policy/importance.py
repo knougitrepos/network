@@ -21,11 +21,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class NetworkState:
-    """정책 결정 시점의 네트워크 상태 스냅샷."""
+    """정책 결정 시점의 네트워크 상태 스냅샷.
+
+    cross-layer 적응 전송을 위해 전송 계층 상태(Grazia 2021, Borisov 2025)와
+    응용 계층 상태(buffer, queue)를 함께 캡처한다.
+    """
     rtt_ms: float
     bandwidth_mbps: float
     loss_rate: float = 0.0
     buffer_level_ms: float = 0.0
+    # --- cross-layer 확장 필드 (Borisov 2025 관점) ---
+    queue_bytes: int = 0             # 현재 배칭 큐에 쌓인 바이트 수
+    estimated_batch_gain: float = 0.0  # 배칭으로 인한 예상 throughput 향상률
 
 
 class ImportanceScorer(abc.ABC):
@@ -46,9 +53,14 @@ def build_importance_features(
 ) -> List[float]:
     """ML scorer용 입력 feature 벡터를 생성한다.
 
-    feature order:
+    feature order (13차원):
     [I_onehot, P_onehot, B_onehot, key_frame, payload_bytes,
-     slack_ms, slack_ratio, rtt_ms, bandwidth_mbps, loss_rate, buffer_level_ms]
+     slack_ms, slack_ratio, rtt_ms, bandwidth_mbps, loss_rate,
+     buffer_level_ms, queue_bytes, estimated_batch_gain]
+
+    cross-layer 관점: 콘텐츠 특성(0-6) + 전송 계층 상태(7-12) 통합.
+    Borisov(2025)의 E2E 성능 추정 피처(queue_bytes, estimated_batch_gain)가
+    Tüker(2024)의 콘텐츠 중요도 피처와 결합되어 ML 입력을 구성한다.
     """
     frame_type = str(frame.get("frame_type", "B")).upper()
     deadline_ms = float(frame.get("display_deadline_ms", float("inf")))
@@ -69,6 +81,9 @@ def build_importance_features(
         float(network.bandwidth_mbps),
         float(network.loss_rate),
         float(network.buffer_level_ms),
+        # cross-layer 확장 피처 (Borisov 2025 관점)
+        float(network.queue_bytes),
+        float(network.estimated_batch_gain),
     ]
 
 

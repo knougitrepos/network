@@ -2,16 +2,20 @@
 
 ## 연구 정체성
 
-- 본 연구는 **TCP batching 연구가 아니다**.
-- H.264 코덱의 프레임 중요도(I/P/B)를 동적으로 판단하여 프레임 단위 전송 행동을 결정하는 **적응 전송 연구**다.
-- 참조 논문(Simsek et al., 2023)과 유사한 방향이며, 중요도 판단 방법론(heuristic → ML → RL) 고도화가 핵심 기여점이다.
-- 문서/코드/커밋 메시지에서 "TCP batching 연구"로 표현하지 않는다.
+- 본 연구는 **단순 TCP batching 최적화가 아니다**.
+- TCP/QUIC 전송 계층 결정(Grazia 2021, Borisov 2025)에 **콘텐츠 중요도**(Tüker 2024)를 ML/RL 기반으로 통합하는 **cross-layer 적응 전송 연구**다.
+- 중요도 판단 방법론(heuristic → ML → RL) 고도화가 핵심 기여점이다.
+- 연관논문 3편의 역할:
+  - **Tüker et al. (2024)**: 콘텐츠 중요도(content-aware) 축의 선행 연구
+  - **Grazia et al. (2021)**: TCP 전송 계층 latency 메커니즘(TCP Pacing/TSQ)의 근거
+  - **Borisov et al. (2025)**: adaptive batching 필요성의 근거(E2E 성능 추정)
+- 문서/코드/커밋 메시지에서 "단순 TCP batching 연구"로 표현하지 않는다. "cross-layer 적응 전송" 또는 "콘텐츠 중요도 기반 적응 전송"으로 표현한다.
 
 ## 문서 구조 규칙 (docs/)
 
 모든 프로젝트 문서는 `docs/` 아래 4개 카테고리로 관리한다. 루트에 md 파일을 생성하지 않는다 (README.md 제외).
 
-```
+```text
 docs/
   initial_plan.md              # 카테고리 1
   research_goal.md             # 카테고리 3

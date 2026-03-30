@@ -50,7 +50,7 @@ class StepResult:
 class FrameSchedulingEnv:
     """프레임 단위 전송 스케줄링 RL 환경.
 
-    state vector (12차원):
+    state vector (14차원):
       0: frame_type_encoded (I=0, P=1, B=2, FILE=3)
       1: importance_score
       2: deadline_slack_ms
@@ -63,6 +63,8 @@ class FrameSchedulingEnv:
       9: late_frame_ratio_so_far
      10: step_index (정규화)
      11: key_frame
+     12: estimated_batch_gain (cross-layer: Borisov 2025 관점)
+     13: loss_rate
 
     action space: FrameAction enum (0~4)
     """
@@ -123,6 +125,7 @@ class FrameSchedulingEnv:
             rtt_ms=cfg.rtt_ms,
             bandwidth_mbps=cfg.bandwidth_mbps,
             buffer_level_ms=max(0.0, float(row.get("display_deadline_ms", 0)) - self.last_completion_ms),
+            queue_bytes=self.queue_bytes,
         )
 
         importance = self.scorer.score(frame_dict, network)
@@ -166,7 +169,7 @@ class FrameSchedulingEnv:
 
     def _get_state(self) -> List[float]:
         if self.current_frame_idx >= len(self.events):
-            return [0.0] * 12
+            return [0.0] * 14
 
         row = self.events.iloc[self.current_frame_idx]
         frame_type_str = str(row.get("frame_type", "FILE")).upper()
@@ -186,22 +189,32 @@ class FrameSchedulingEnv:
         total_frames = max(self.current_frame_idx, 1)
         late_ratio_so_far = self.late_count / total_frames
 
+        # cross-layer 배칭 이득 추정 (Borisov 2025 관점)
+        cfg = self.config.transport_cfg
+        _est_batch_gain = min(
+            1.0,
+            self.queue_bytes / max(cfg.mss_bytes, 1),
+        ) * cfg.nagle_penalty_factor
+
         return [
             self.FRAME_TYPE_MAP.get(frame_type_str, 3.0),
             self.scorer.score(row.to_dict(), NetworkState(
-                rtt_ms=self.config.transport_cfg.rtt_ms,
-                bandwidth_mbps=self.config.transport_cfg.bandwidth_mbps,
+                rtt_ms=cfg.rtt_ms,
+                bandwidth_mbps=cfg.bandwidth_mbps,
+                queue_bytes=self.queue_bytes,
             )),
             slack_ms,
             float(row["payload_bytes"]),
             gop_progress,
             float(self.queue_bytes),
-            float(self.config.transport_cfg.rtt_ms),
-            float(self.config.transport_cfg.bandwidth_mbps),
+            float(cfg.rtt_ms),
+            float(cfg.bandwidth_mbps),
             max(0.0, slack_ms),
             late_ratio_so_far,
             self.step_count / max(self.config.max_steps, 1),
             float(row.get("key_frame", 0)),
+            _est_batch_gain,
+            0.0,  # loss_rate (향후 동적 업데이트)
         ]
 
     def _get_info(self) -> Dict[str, float]:
@@ -225,7 +238,7 @@ def run_episode(env: FrameSchedulingEnv, max_steps: Optional[int] = None) -> Dic
             break
         row = env.events.iloc[env.current_frame_idx]
         cfg = env.config.transport_cfg
-        network = NetworkState(rtt_ms=cfg.rtt_ms, bandwidth_mbps=cfg.bandwidth_mbps)
+        network = NetworkState(rtt_ms=cfg.rtt_ms, bandwidth_mbps=cfg.bandwidth_mbps, queue_bytes=env.queue_bytes)
         importance = env.scorer.score(row.to_dict(), network)
         deadline_ms = float(row.get("display_deadline_ms", float("inf")))
         slack_ms = deadline_ms - max(float(row["event_time_ms"]), env.last_completion_ms)

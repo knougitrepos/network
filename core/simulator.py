@@ -186,10 +186,19 @@ def run_simulation(
                 "payload_bytes": int(row.payload_bytes),
                 "gop_id": int(row.gop_id),
             }
+            # cross-layer 배칭 이득 추정 (Borisov 2025 관점)
+            # 현재 큐에 MSS 이상의 데이터가 쌓여 있으면 배칭으로 인한
+            # throughput 향상이 예상됨 — Nagle 패널티 회피 비율로 근사
+            _est_batch_gain = min(
+                1.0,
+                queue_bytes / max(transport_cfg.mss_bytes, 1),
+            ) * transport_cfg.nagle_penalty_factor
             network = NetworkState(
                 rtt_ms=float(transport_cfg.rtt_ms),
                 bandwidth_mbps=float(transport_cfg.bandwidth_mbps),
                 buffer_level_ms=max(0.0, float(row.display_deadline_ms) - max(now_ms, last_link_release_ms)),
+                queue_bytes=queue_bytes,
+                estimated_batch_gain=_est_batch_gain,
             )
             importance_score = scorer.score(frame_dict, network)
             deadline_slack_ms = float(row.display_deadline_ms) - max(now_ms, last_link_release_ms)
@@ -198,6 +207,8 @@ def run_simulation(
                 deadline_slack_ms,
                 network,
                 available_paths=available_paths,
+                queue_bytes=queue_bytes,
+                estimated_batch_gain=_est_batch_gain,
             )
             selected_action_name = selected_action.name
             action_counts[selected_action_name] += 1
