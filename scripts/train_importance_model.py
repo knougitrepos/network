@@ -171,6 +171,15 @@ def main() -> None:
     r2 = float(r2_score(y_test, pred))
     logger.info("Validation metrics: MAE=%.6f R2=%.6f", mae, r2)
 
+    # 전체 데이터에 대한 예측값 기반 임계값 계산
+    all_pred = model.predict(x)
+    threshold_low = float(np.percentile(all_pred, 30))  # 하위 30%
+    threshold_high = float(np.percentile(all_pred, 75))  # 상위 25%
+    logger.info(
+        "Importance thresholds: low=%.6f (p30), high=%.6f (p75)",
+        threshold_low, threshold_high,
+    )
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("wb") as f:
         pickle.dump(model, f)
@@ -194,6 +203,8 @@ def main() -> None:
         "val_mae": mae,
         "val_r2": r2,
         "label_mode": label_mode,
+        "importance_threshold_low": threshold_low,
+        "importance_threshold_high": threshold_high,
     }
     meta_output_path.parent.mkdir(parents=True, exist_ok=True)
     meta_output_path.write_text(

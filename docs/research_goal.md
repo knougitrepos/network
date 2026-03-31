@@ -1,6 +1,6 @@
 # 연구 목표
 
-> **최종 갱신**: 2026-03-31
+> **최종 갱신**: 2026-03-31 (Mock 제거 및 Windows 실제 구현)
 
 ## 한 줄 요약
 
@@ -96,8 +96,17 @@ packet trimming             계층 결정에 ML/RL로 반영"
 ## 3계층 실험 체계
 
 1. **시뮬레이터 (현재 리포)**: 대규모 정책 탐색/어블레이션
-2. **에뮬레이션 (Mininet)**: 제어 가능한 손실·RTT·대역폭 조건 검증
+2. **에뮬레이션**:
+   - **Windows**: `scripts/network_emulator.py` — asyncio 기반 실제 TCP 소켓 통신 + 지연/손실 시뮬레이션
+   - **Linux**: Mininet + tc/netem — 커널 레벨 네트워크 에뮬레이션
 3. **실환경 (Wi-Fi + LTE/5G)**: 외부 요인 포함 강건성 검증
+
+### Windows 환경 지원
+
+- **네트워크 에뮬레이션**: `scripts/network_emulator.py` (실제 TCP 통신)
+- **QUIC 스택**: aioquic 설치 시 실제 동작 (`pip install aioquic`)
+- **VMAF 품질 측정**: FFmpeg GPL 빌드 설치 시 실제 동작
+- 설치 가이드: `docs/windows_setup_guide.md` 참조
 
 ## 비교군
 

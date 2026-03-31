@@ -89,6 +89,7 @@ def run_simulation(
     available_paths = max(1, int(getattr(policy_cfg, "available_paths", 1)))
     scorer = None
     importance_scorer_type = "none"
+    importance_thresholds: tuple[float, float] | None = None
     if frame_action_mode and isinstance(workload_cfg, VideoTraceConfig):
         playback_buffer_ms = float(workload_cfg.playback_buffer_ms)
         if policy_cfg.name == "frame_action_ml_adaptive":
@@ -98,6 +99,7 @@ def run_simulation(
                     playback_buffer_ms=playback_buffer_ms,
                 )
                 importance_scorer_type = "ml" if scorer.model is not None else "ml_fallback_heuristic"
+                importance_thresholds = scorer.importance_thresholds
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "Failed to initialize MLImportanceScorer; fallback to heuristic scorer: %s",
@@ -209,6 +211,7 @@ def run_simulation(
                 available_paths=available_paths,
                 queue_bytes=queue_bytes,
                 estimated_batch_gain=_est_batch_gain,
+                importance_thresholds=importance_thresholds,
             )
             selected_action_name = selected_action.name
             action_counts[selected_action_name] += 1

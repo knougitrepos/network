@@ -120,13 +120,20 @@ class MLImportanceScorer(ImportanceScorer):
 
     - model_path가 주어지면 pickle 모델을 로드한다.
     - 모델이 없거나 추론 실패 시 heuristic scorer로 안전하게 폴백한다.
+    - importance_thresholds: 모델 점수 분포에 맞는 (low, high) 임계값
     """
 
-    def __init__(self, model_path: Optional[str] = None, playback_buffer_ms: float = 50.0) -> None:
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        playback_buffer_ms: float = 50.0,
+        importance_thresholds: Optional[tuple[float, float]] = None,
+    ) -> None:
         self.model_path = model_path
         self.playback_buffer_ms = max(playback_buffer_ms, 1.0)
         self.model = None
         self._fallback = HeuristicImportanceScorer(playback_buffer_ms=self.playback_buffer_ms)
+        self.importance_thresholds = importance_thresholds  # (low, high)
 
         if model_path:
             self.load_model(model_path)
@@ -137,6 +144,21 @@ class MLImportanceScorer(ImportanceScorer):
             raise FileNotFoundError(f"ML model file not found: {path}")
         with path.open("rb") as f:
             self.model = pickle.load(f)
+        
+        # 메타데이터에서 임계값 로드 시도
+        meta_path = path.with_suffix(".meta.json")
+        if meta_path.exists() and self.importance_thresholds is None:
+            import json
+            try:
+                with meta_path.open("r") as f:
+                    meta = json.load(f)
+                if "importance_threshold_low" in meta and "importance_threshold_high" in meta:
+                    self.importance_thresholds = (
+                        meta["importance_threshold_low"],
+                        meta["importance_threshold_high"],
+                    )
+            except Exception:
+                pass
 
     def _build_features(self, frame: Dict[str, object], network: NetworkState) -> List[float]:
         return build_importance_features(

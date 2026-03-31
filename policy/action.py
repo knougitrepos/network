@@ -33,6 +33,8 @@ def select_action(
     available_paths: int = 1,
     queue_bytes: int = 0,
     estimated_batch_gain: float = 0.0,
+    *,
+    importance_thresholds: tuple[float, float] | None = None,
 ) -> FrameAction:
     """importance score와 deadline slack으로 전송 행동을 결정한다.
 
@@ -40,6 +42,10 @@ def select_action(
       - 콘텐츠 중요도(Tüker 2024)와 전송 계층 상태(Borisov 2025)를 동시에 고려
       - queue_bytes/estimated_batch_gain은 현재 배칭 큐 상태와
         배칭 유지 시 예상되는 throughput 향상률을 반영
+
+    Args:
+        importance_thresholds: (low, high) 임계값 튜플. None이면 기본값 사용.
+            모델마다 점수 분포가 다를 수 있으므로 동적 임계값 지원.
 
     규칙 우선순위:
     1. deadline 이미 초과 & 낮은 중요도 → DROP
@@ -49,10 +55,16 @@ def select_action(
     5. slack 여유 충분 & 낮은 중요도 → UNRELIABLE
     6. 기본 → RELIABLE_SINGLE
     """
-    if deadline_slack_ms <= 0 and importance_score < _LOW_IMPORTANCE:
+    # 동적 임계값 지원: 모델별 점수 분포 차이 보정
+    if importance_thresholds is not None:
+        low_threshold, high_threshold = importance_thresholds
+    else:
+        low_threshold, high_threshold = _LOW_IMPORTANCE, _HIGH_IMPORTANCE
+
+    if deadline_slack_ms <= 0 and importance_score < low_threshold:
         return FrameAction.DROP
 
-    if importance_score >= _HIGH_IMPORTANCE:
+    if importance_score >= high_threshold:
         if deadline_slack_ms > _CRITICAL_SLACK_MS and available_paths > 1:
             return FrameAction.DUPLICATE
         if available_paths > 1:
@@ -66,15 +78,15 @@ def select_action(
     if (
         estimated_batch_gain >= _BATCH_GAIN_THRESHOLD
         and deadline_slack_ms > network.rtt_ms * 3
-        and importance_score < _HIGH_IMPORTANCE
-        and importance_score >= _LOW_IMPORTANCE
+        and importance_score < high_threshold
+        and importance_score >= low_threshold
     ):
         return FrameAction.RELIABLE_SINGLE  # flush 유보 → 배칭 축적
 
-    if deadline_slack_ms > network.rtt_ms * 2 and importance_score < _LOW_IMPORTANCE:
+    if deadline_slack_ms > network.rtt_ms * 2 and importance_score < low_threshold:
         return FrameAction.UNRELIABLE
 
-    if available_paths > 1 and importance_score >= _LOW_IMPORTANCE:
+    if available_paths > 1 and importance_score >= low_threshold:
         return FrameAction.RELIABLE_MULTI
 
     return FrameAction.RELIABLE_SINGLE
