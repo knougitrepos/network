@@ -1,6 +1,6 @@
 # 연구 목표
 
-> **최종 갱신**: 2026-03-31 (Mock 제거 및 Windows 실제 구현)
+> **최종 갱신**: 2026-04-02 (중간보고용 간소 분석 경로 추가)
 
 ## 한 줄 요약
 
@@ -107,6 +107,16 @@ packet trimming             계층 결정에 ML/RL로 반영"
 - **QUIC 스택**: aioquic 설치 시 실제 동작 (`pip install aioquic`)
 - **VMAF 품질 측정**: FFmpeg GPL 빌드 설치 시 실제 동작
 - 설치 가이드: `docs/windows_setup_guide.md` 참조
+
+## 중간보고용 간소 분석 경로
+
+- 중간보고 전용 노트북: `output/jupyter-notebook/midreport_ipb_transport_summary.ipynb`
+- 입력 비디오 폴더: `dataset/videos/`
+- 자동 생성 trace 폴더: `dataset/traces/`
+- 중간보고 산출물(CSV/PNG): `output/jupyter-notebook/assets/midreport/`
+- 분석 초점:
+  - 1순위: H.264 IPB/GOP 특성 파악
+  - 2순위: 최소 전송효율 지표(`late_frame_ratio`, `dropped_frame_ratio`, `useful_goodput_bytes`) 비교
 
 ## 비교군
 
