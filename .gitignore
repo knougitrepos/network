@@ -67,3 +67,7 @@ pip-wheel-metadata/
 # --- logs / temp ---
 *.log
 *.tmp
+
+# Mid-report reproducibility dataset artifacts
+dataset/videos/
+dataset/traces/

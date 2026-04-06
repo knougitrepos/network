@@ -1,6 +1,6 @@
 # 연구 목표
 
-> **최종 갱신**: 2026-04-02 (중간보고용 간소 분석 경로 추가)
+> **최종 갱신**: 2026-04-06 (중간보고 재현성/설명성 보강)
 
 ## 한 줄 요약
 
@@ -113,6 +113,7 @@ packet trimming             계층 결정에 ML/RL로 반영"
 - 중간보고 전용 노트북: `output/jupyter-notebook/midreport_ipb_transport_summary.ipynb`
 - 입력 비디오 폴더: `dataset/videos/`
 - 자동 생성 trace 폴더: `dataset/traces/`
+- 공개 데이터셋 경로: 노트북 내 `PUBLIC_VIDEO_SOURCES` 목록 기반 자동 다운로드(실패 시 수동 입력 fallback)
 - 중간보고 산출물(CSV/PNG): `output/jupyter-notebook/assets/midreport/`
 - 분석 초점:
   - 1순위: H.264 IPB/GOP 특성 파악
