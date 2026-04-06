@@ -2,19 +2,19 @@
 
 ## Design and Experiment of a Cross-layer Adaptive Transport System Based on H.264 Frame Importance
 
-박 동 찬⁺ · 손 진 곤⁺⁺
+박 동 찬 & 손 진 곤
 
-Dongchan Park⁺ · Jin-Gon Son⁺⁺
+Park, D & Son, J
 
 ## 요 약
 
-본 연구는 실시간 비디오 전송에서 프레임 중요도를 활용한 전송 행동 결정 시스템을 설계하고 실험하였다. H.264 코덱에서 I, P, B 프레임은 복호 의존성과 크기가 서로 다르므로 동일한 방식으로 전송하면 비효율이 발생한다. 이를 해결하기 위해 프레임별 중요도 점수를 산정하고, 그 점수와 재생 마감시간(deadline) 여유, 네트워크 상태를 종합하여 신뢰 전송, 비신뢰 전송, 다중경로 전송, 중복 전송, 전송 포기 중 하나를 선택하는 정책을 구현하였다. 공개 비디오 데이터셋 13건에 대해 기준 정책(heuristic\_baseline)과 제안 정책(frame\_action\_single\_path, frame\_action\_multipath)을 비교한 결과, 제안 정책은 마감시간 초과 프레임 비율(late\_frame\_ratio)을 기준 정책 대비 최대 36.6% 낮추었다. 이 결과는 콘텐츠 중요도와 전송 행동의 결합이 비디오 전송 품질 개선에 유효함을 보여준다.
+본 연구는 실시간 비디오 전송에서 프레임 중요도를 활용한 전송 행동 결정 시스템을 설계하고 실험하였다. H.264 코덱에서 I, P, B 프레임은 복호 의존성과 크기가 서로 다르므로 동일한 방식으로 전송하면 비효율이 발생한다. 이를 해결하기 위해 프레임별 중요도 점수를 산정하고, 그 점수와 재생 마감시간(deadline) 여유, 네트워크 상태를 종합하여 신뢰 전송, 비신뢰 전송, 다중경로 전송, 중복 전송, 전송 포기 중 하나를 선택하는 정책을 구현하였다. 공개 비디오 데이터셋 13건에 대해 기준 정책(heuristic\_baseline)과 문헌 기반 혼합 정책(frame\_action\_single\_path, frame\_action\_multipath)을 비교한 결과, 혼합 정책은 마감시간 초과 프레임 비율(late\_frame\_ratio)을 기준 정책 대비 최대 36.6% 낮추었다. 이 결과는 선행연구의 전송 행동공간을 차용하고 콘텐츠 중요도와 결합하는 접근이 비디오 전송 품질 개선에 유효함을 보여준다.
 
 주제어: 콘텐츠 중요도, H.264 IPB, Cross-layer 적응 전송, QUIC, 비디오 QoE
 
 ## ABSTRACT
 
-This study designs and evaluates an adaptive transport system that determines per-frame transmission actions based on video frame importance. In H.264, I, P, and B frames differ in decoding dependency and size, making uniform transport inefficient. We compute an importance score for each frame and combine it with playback deadline slack and network state to select among five actions: reliable single-path, reliable multi-path, unreliable (QUIC DATAGRAM), duplicate, and drop. Experiments on 13 public video clips show that the proposed policies reduce the late frame ratio by up to 36.6% compared to the heuristic baseline. These results confirm the effectiveness of coupling content importance with transport actions for video delivery.
+This study designs and evaluates an adaptive transport system that determines per-frame transmission actions based on video frame importance. In H.264, I, P, and B frames differ in decoding dependency and size, making uniform transport inefficient. We compute an importance score for each frame and combine it with playback deadline slack and network state to select among five actions: reliable single-path, reliable multi-path, unreliable (QUIC DATAGRAM), duplicate, and drop. Experiments on 13 public video clips show that the literature-based hybrid policies reduce the late frame ratio by up to 36.6% compared to the heuristic baseline. These results confirm the effectiveness of combining transport action spaces from prior work with content importance scoring for video delivery.
 
 Keywords: Content-Aware Transport, H.264 IPB, Cross-Layer Adaptation, QUIC, Video QoE
 
@@ -26,7 +26,7 @@ Keywords: Content-Aware Transport, H.264 IPB, Cross-Layer Adaptation, QUIC, Vide
 
 기존 전송 최적화 연구는 크게 두 갈래로 발전해 왔다. 하나는 전송 계층에서 큐 관리와 배치 크기를 조절하는 접근이다. Grazia et al.[2]은 TCP Pacing과 TSQ(TCP Small Queues)가 지연과 jitter에 미치는 영향을 분석하였고, Borisov et al.[3]은 Little의 법칙 기반 E2E 성능 추정으로 Nagle 알고리즘을 동적 토글하여 처리량을 2배 높인 사례를 보고하였다. 다른 하나는 콘텐츠 특성을 이용하는 접근이다. Tüker et al.[1]은 네트워크 엣지에서 패킷 중요도에 따라 선택적으로 trimming하는 방식을 제안하였다. 그러나 이 두 갈래는 대체로 독립적으로 적용되어 왔으며, 프레임 중요도와 전송 행동을 하나의 정책 안에서 통합한 연구는 아직 충분하지 않다.
 
-본 연구는 이 공백을 메우기 위해 cross-layer 접근을 취한다. H.264 프레임의 타입(I/P/B), 크기, 재생 마감시간 여유, 네트워크 RTT와 대역폭을 종합하여 중요도 점수를 산정하고, 이 점수에 따라 5가지 전송 행동 중 하나를 선택하는 정책을 설계하였다. 정책은 현재 규칙 기반(heuristic)으로 동작하며, 이후 머신러닝(ML) 및 강화학습(RL)으로 확장할 수 있는 구조를 갖추고 있다. Mao et al.[4]의 Pensieve가 적응형 비트레이트(ABR) 문제에서 RL의 실효성을 입증한 것처럼, 프레임 수준 전송 행동 결정에도 학습 기반 정책이 유효할 것으로 기대된다.
+본 연구는 이러한 배경에서 선행연구의 아이디어를 결합한 cross-layer 접근을 시도한다. H.264 프레임의 타입(I/P/B), 크기, 재생 마감시간 여유, 네트워크 RTT와 대역폭을 종합하여 중요도 점수를 산정하고, 이 점수에 따라 5가지 전송 행동 중 하나를 선택하는 정책을 설계하였다. 정책은 현재 규칙 기반(heuristic)으로 동작하며, 이후 머신러닝(ML) 및 강화학습(RL)으로 확장할 수 있는 구조를 갖추고 있다. Mao et al.[4]의 Pensieve가 적응형 비트레이트(ABR) 문제에서 RL의 실효성을 입증한 것처럼, 프레임 수준 전송 행동 결정에도 학습 기반 정책이 유효할 것으로 기대된다.
 
 본 보고서에서는 구현된 시스템의 구조를 설명하고, 공개 데이터셋을 사용한 비교 실험 결과를 제시하며, 현재 단계의 한계와 향후 연구 방향을 논의한다.
 
@@ -36,15 +36,15 @@ Keywords: Content-Aware Transport, H.264 IPB, Cross-Layer Adaptation, QUIC, Vide
 
 Tüker et al.[1]은 H.264 SVC(Scalable Video Coding) 환경에서 패킷에 미리 부여된 중요도 값을 기준으로, 네트워크 엣지의 VNF(Virtual Network Function)에서 불필요한 부분을 잘라내는 packet trimming 기법을 제안하였다. 이 연구는 '중요하지 않은 데이터를 과감히 줄이면 전체 품질이 향상될 수 있다'는 통찰을 제공한다. 그러나 Tüker의 방식은 중요도 값이 인코딩 시점에 고정되며, 전송 계층의 상태(혼잡, RTT 변화)를 반영하지 않는다는 한계가 있다.
 
-본 연구는 Tüker의 콘텐츠 중요도 활용이라는 아이디어를 계승하면서, 중요도를 고정값이 아닌 동적 점수로 산정하고, 이를 전송 행동 선택에 직접 연결하는 점에서 차별화된다.
+본 연구는 Tüker의 콘텐츠 중요도 활용 아이디어를 차용하여, 중요도를 고정값이 아닌 동적 점수로 산정하고, 이를 전송 행동 선택에 직접 연결하는 방식으로 확장하였다.
 
 ### 2.2 전송 계층 지연 제어
 
-Grazia et al.[2]은 TCP Pacing이 버스트를 평탄화하고 TSQ가 소켓 큐 길이를 제한함으로써 지연이 줄어드는 메커니즘을 정량적으로 분석하였다. Borisov et al.[3]은 애플리케이션 수준에서 E2E 성능을 추정하여 배칭 여부를 동적으로 결정하는 방식을 제안하였다. 이 연구들은 '전송할 데이터가 무엇인지'를 고려하지 않고 큐와 타이밍만 제어한다는 공통 한계를 갖는다. 본 연구는 이러한 전송 계층 제어에 콘텐츠 중요도 축을 결합하여, 어떤 데이터를 우선적으로 보낼지까지 결정한다.
+Grazia et al.[2]은 TCP Pacing이 버스트를 평탄화하고 TSQ가 소켓 큐 길이를 제한함으로써 지연이 줄어드는 메커니즘을 정량적으로 분석하였다. Borisov et al.[3]은 애플리케이션 수준에서 E2E 성능을 추정하여 배칭 여부를 동적으로 결정하는 방식을 제안하였다. 이 연구들은 '전송할 데이터가 무엇인지'를 고려하지 않고 큐와 타이밍만 제어한다는 공통 한계를 갖는다. 본 연구는 이러한 전송 계층 제어 기법을 차용하면서, 콘텐츠 중요도 축을 추가로 결합하여 어떤 데이터를 우선적으로 보낼지까지 결정하는 혼합 정책을 실험한다.
 
 ### 2.3 MPR-QUIC와 학습 기반 정책
 
-Han et al.[5]은 QUIC 위에서 부분 신뢰 전송(Partially Reliable)과 다중경로(Multipath)를 결합한 MPR-QUIC 구조를 제안하였다. 이 구조는 '모든 데이터를 반드시 신뢰 전송해야 하는가?'라는 질문에 대해, 중요하지 않은 프레임은 비신뢰로 보내거나 포기할 수 있다는 가능성을 보여준다. 본 연구는 MPR-QUIC의 행동 공간(신뢰/비신뢰, 단일/다중경로)을 정책 시뮬레이션에 반영하여, 이 행동 공간이 실제 지표 개선으로 이어지는지를 검증한다.
+Han et al.[5]은 QUIC 위에서 부분 신뢰 전송(Partially Reliable)과 다중경로(Multipath)를 결합한 MPR-QUIC 구조를 제안하였다. 이 구조는 '모든 데이터를 반드시 신뢰 전송해야 하는가?'라는 질문에 대해, 중요하지 않은 프레임은 비신뢰로 보내거나 포기할 수 있다는 가능성을 보여준다. 본 연구는 MPR-QUIC에서 제시한 행동 공간(신뢰/비신뢰, 단일/다중경로)을 차용하여 정책 시뮬레이션에 반영하고, 이 행동 공간이 콘텐츠 중요도와 결합될 때 실제 지표 개선으로 이어지는지를 실험적으로 확인한다.
 
 Mao et al.[4]의 Pensieve는 과거 네트워크 상태를 입력으로 받아 비트레이트를 선택하는 RL 정책이 전문가 규칙을 능가할 수 있음을 증명하였다. 본 연구는 ABR이 아닌 프레임 수준 전송 행동이라는 다른 문제에 유사한 학습 접근을 적용할 계획이며, 현 단계에서는 학습의 전 단계인 규칙 기반 정책의 성능을 우선 확인한다.
 
@@ -79,7 +79,7 @@ Fig. 1과 같이 시스템은 두 단계(Stage A, Stage B)로 구성된다.
 5. deadline 여유가 RTT의 2배 이상이고 중요도가 낮으면 **UNRELIABLE**을 선택한다.
 6. 위 조건에 해당하지 않으면 기본값인 **RELIABLE\_SINGLE**을 선택한다.
 
-이 규칙의 핵심 원리는 "중요한 프레임은 안전하게, 덜 중요한 프레임은 가볍게"이다. Tüker[1]의 콘텐츠 중요도 개념과 Borisov[3]의 배칭 이득 개념이 하나의 의사결정 함수에 통합되어 있다.
+이 규칙의 핵심 원리는 "중요한 프레임은 안전하게, 덜 중요한 프레임은 가볍게"이다. Tüker[1]의 콘텐츠 중요도 개념과 Borisov[3]의 배칭 이득 개념을 차용하여 하나의 의사결정 함수로 혼합 구성한 것이다.
 
 ### 3.3 비교 정책
 
@@ -93,7 +93,7 @@ Fig. 1과 같이 시스템은 두 단계(Stage A, Stage B)로 구성된다.
 | frame\_action\_single\_path | frame\_action\_adaptive, paths=1 | RELIABLE\_SINGLE, UNRELIABLE, DROP | 1 |
 | frame\_action\_multipath | frame\_action\_adaptive, paths=2 | 전체 5개 행동 | 2 |
 
-`heuristic_baseline`은 프레임 타입에 따라 배치 크기와 flush 간격만 조절하는 정책으로, 프레임별 전송 행동을 명시적으로 선택하지 않는다. 이에 반해 `frame_action_*` 정책은 매 프레임마다 Stage A → Stage B를 거쳐 행동을 동적으로 결정한다.
+`heuristic_baseline`은 프레임 타입에 따라 배치 크기와 flush 간격만 조절하는 정책으로, 프레임별 전송 행동을 명시적으로 선택하지 않는다. 이에 반해 `frame_action_*` 정책은 선행연구[1][3][5]의 아이디어를 혼합하여 매 프레임마다 Stage A → Stage B를 거쳐 행동을 동적으로 결정한다.
 
 ### 3.4 데이터셋
 
@@ -130,7 +130,7 @@ Fig. 1과 같이 시스템은 두 단계(Stage A, Stage B)로 구성된다.
 | small | 0.2090 | 0.1202 | 0.0714 |
 | medium | 0.4276 | 0.3485 | 0.3233 |
 
-small 구간에서 `frame_action_single_path`는 baseline 대비 약 65.8%의 개선을 보였으며, medium 구간에서도 약 24.4%의 개선을 보였다. 모든 구간에서 제안 정책이 baseline보다 우수했으며, 파일 크기가 작을수록(즉, 프레임 수가 적어 개별 프레임의 지연이 전체에 미치는 영향이 클수록) 개선 폭이 더 컸다.
+small 구간에서 `frame_action_single_path`는 baseline 대비 약 65.8%의 개선을 보였으며, medium 구간에서도 약 24.4%의 개선을 보였다. 모든 구간에서 혼합 정책이 baseline보다 우수한 수치를 보였으며, 파일 크기가 작을수록(즉, 프레임 수가 적어 개별 프레임의 지연이 전체에 미치는 영향이 클수록) 개선 폭이 더 컸다.
 
 ### 4.3 신뢰/비신뢰 행동 사용 패턴
 
@@ -150,11 +150,11 @@ Table 3에서 `frame_action_multipath`의 late\_frame\_ratio(0.2431)가 `frame_a
 
 ## 5. 결론 및 향후 과제
 
-본 연구에서는 H.264 프레임 중요도를 기반으로 전송 행동을 동적 결정하는 cross-layer 적응 전송 시스템을 설계하고, 세 가지 정책의 성능을 비교 실험하였다. 실험 결과, 프레임별 행동 선택 정책(`frame_action_single_path`)은 기준 정책 대비 마감시간 초과 비율을 최대 약 36.6% 낮추었다. 이는 콘텐츠 중요도와 전송 행동을 결합하는 접근이 비디오 전송 품질 개선에 실효적임을 보여준다.
+본 연구에서는 선행연구에서 제시된 콘텐츠 중요도, 전송 행동 공간, 배칭 이득 등의 개념을 차용·혼합하여 cross-layer 적응 전송 시스템을 구성하고, 세 가지 정책의 성능을 비교 실험하였다. 실험 결과, 문헌 기반 혼합 정책(`frame_action_single_path`)은 기준 정책 대비 마감시간 초과 비율을 최대 약 36.6% 낮추었다. 이는 기존 연구의 아이디어들을 결합하는 접근이 비디오 전송 품질 개선에 유효할 수 있음을 시사한다.
 
 그러나 현 단계에는 다음과 같은 한계가 존재한다. 첫째, 다중경로 모델이 경량 근사 수준에 머물러 있어 multipath의 이점이 충분히 나타나지 않았다. 둘째, 중요도 산정이 규칙 기반으로만 이루어져 다양한 비디오 특성에 대한 적응력이 제한적이다. 셋째, 실험 데이터셋의 해상도 범위가 360p~1080p로 한정되어 2K/4K 환경에서의 일반화 검증이 필요하다.
 
-향후 연구에서는 다음 세 방향으로 확장할 계획이다. 첫째, 경로별 상태 추정(E2E delay, loss, jitter)을 정교화하여 다중경로 전송의 실효적 이점을 재현한다. 둘째, ML 기반 중요도 스코어러를 도입하여 규칙 기반 대비 QoE 개선 폭을 비교한다. 셋째, RL 기반 정책 학습을 도입하여 전송 행동 결정의 최적화를 시도하며, Pensieve[4]가 ABR에서 보인 것과 유사한 학습 효과가 프레임 수준 전송에서도 나타나는지를 검증한다. 이를 통해 "콘텐츠 중요도 → 전송 행동" 결합의 연구 기여를 확정할 계획이다.
+향후 연구에서는 다음 세 방향으로 확장할 계획이다. 첫째, 경로별 상태 추정(E2E delay, loss, jitter)을 정교화하여 다중경로 전송의 실효적 이점을 재현한다. 둘째, ML 기반 중요도 스코어러를 도입하여 규칙 기반 대비 QoE 개선 폭을 비교한다. 셋째, RL 기반 정책 학습을 도입하여 전송 행동 결정의 최적화를 시도하며, Pensieve[4]가 ABR에서 보인 것과 유사한 학습 효과가 프레임 수준 전송에서도 나타나는지를 검증한다. 이를 통해 "콘텐츠 중요도 → 전송 행동" 결합 방식의 실효성을 보다 엄밀하게 검증할 계획이다.
 
 ---
 
