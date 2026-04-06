@@ -54,6 +54,101 @@ def _policy_uses_frame_actions(policy_cfg: PolicyConfig, workload_cfg: WorkloadC
     )
 
 
+def _build_path_states(
+    transport_cfg: TransportConfig,
+    available_paths: int,
+    path_profile: str,
+) -> List[Dict[str, float]]:
+    """멀티패스 근사용 경로 상태를 구성한다.
+
+    실제 QUIC 구현이 아니라, 경로 이질성(rtt/bw/loss) 차이가
+    completion 계산에 반영되도록 하는 경량 근사 모델이다.
+    """
+    if available_paths <= 1:
+        return [{
+            "rtt_ms": float(transport_cfg.rtt_ms),
+            "bandwidth_mbps": float(transport_cfg.bandwidth_mbps),
+            "loss_rate": 0.0,
+        }]
+
+    base_rtt = float(transport_cfg.rtt_ms)
+    base_bw = float(transport_cfg.bandwidth_mbps)
+
+    if path_profile == "balanced":
+        factors = [(1.0, 1.0, 0.01), (1.1, 0.95, 0.02), (0.95, 1.05, 0.015)]
+    else:
+        # 기본: heterogeneous (Han et al. MPR-QUIC 대비 효과 관찰용)
+        factors = [(0.7, 0.65, 0.01), (1.0, 1.0, 0.02), (1.6, 1.5, 0.05)]
+
+    paths: List[Dict[str, float]] = []
+    for i in range(available_paths):
+        rtt_mul, bw_mul, loss = factors[i % len(factors)]
+        paths.append({
+            "rtt_ms": max(1.0, base_rtt * rtt_mul),
+            "bandwidth_mbps": max(0.1, base_bw * bw_mul),
+            "loss_rate": float(loss),
+        })
+    return paths
+
+
+def _estimate_action_completion_ms(
+    row_payload_bytes: int,
+    action_name: str,
+    send_start_ms: float,
+    transport_cfg: TransportConfig,
+    path_states: Sequence[Dict[str, float]],
+) -> float:
+    """행동별 completion 근사.
+
+    - RELIABLE_MULTI: 경로별 분할 전송 후 가장 느린 경로 완료시각 사용
+    - DUPLICATE: 상위 2경로 중 먼저 도착하는 완료시각 사용
+    - UNRELIABLE: ACK penalty 제거 + propagation 축소
+    - RELIABLE_SINGLE/기타: 기존 단일경로 근사
+    """
+    def single_path_completion(payload: int, rtt_ms: float, bw_mbps: float, ack_penalty: bool) -> float:
+        tx_time_ms = (payload * 8.0) / (max(bw_mbps, 0.001) * 1_000_000.0) * 1000.0
+        ack_ms = (
+            min(transport_cfg.delayed_ack_ms, transport_cfg.nagle_penalty_factor * rtt_ms)
+            if ack_penalty and payload < transport_cfg.mss_bytes
+            else 0.0
+        )
+        return send_start_ms + tx_time_ms + transport_cfg.propagation_factor * rtt_ms + ack_ms
+
+    primary = path_states[0]
+    base_single = single_path_completion(
+        row_payload_bytes,
+        primary["rtt_ms"],
+        primary["bandwidth_mbps"],
+        ack_penalty=True,
+    )
+
+    if action_name == FrameAction.UNRELIABLE.name:
+        tx_time_ms = (row_payload_bytes * 8.0) / (max(primary["bandwidth_mbps"], 0.001) * 1_000_000.0) * 1000.0
+        return send_start_ms + tx_time_ms + 0.35 * primary["rtt_ms"]
+
+    if action_name == FrameAction.RELIABLE_MULTI.name and len(path_states) > 1:
+        bw_sum = sum(max(p["bandwidth_mbps"], 0.001) for p in path_states)
+        completion_candidates: List[float] = []
+        for p in path_states:
+            share = max(p["bandwidth_mbps"], 0.001) / bw_sum
+            path_payload = max(1, int(round(row_payload_bytes * share)))
+            completion = single_path_completion(path_payload, p["rtt_ms"], p["bandwidth_mbps"], ack_penalty=True)
+            completion += p["rtt_ms"] * p["loss_rate"] * 0.5
+            completion_candidates.append(completion)
+        return max(completion_candidates) if completion_candidates else base_single
+
+    if action_name == FrameAction.DUPLICATE.name and len(path_states) > 1:
+        top2 = sorted(path_states, key=lambda p: (p["rtt_ms"], -p["bandwidth_mbps"]))[:2]
+        dup_candidates = [
+            single_path_completion(row_payload_bytes, p["rtt_ms"], p["bandwidth_mbps"], ack_penalty=True)
+            + p["rtt_ms"] * p["loss_rate"] * 0.2
+            for p in top2
+        ]
+        return min(dup_candidates) if dup_candidates else base_single
+
+    return base_single
+
+
 def run_simulation(
     workload_cfg: WorkloadConfig,
     transport_cfg: TransportConfig,
@@ -87,6 +182,8 @@ def run_simulation(
 
     frame_action_mode = _policy_uses_frame_actions(policy_cfg, workload_cfg)
     available_paths = max(1, int(getattr(policy_cfg, "available_paths", 1)))
+    path_profile = str(getattr(policy_cfg, "path_profile", "heterogeneous") or "heterogeneous").lower()
+    path_states = _build_path_states(transport_cfg, available_paths, path_profile)
     scorer = None
     importance_scorer_type = "none"
     importance_thresholds: tuple[float, float] | None = None
@@ -140,10 +237,22 @@ def run_simulation(
 
         for row in queue_rows:
             arrival_ms = float(row["event_time_ms"])
-            latency_ms = completion_ms - arrival_ms
+            row_action = str(row.get("selected_action", "LEGACY"))
+            row_payload = int(row.get("tx_payload_bytes", row["payload_bytes"]))
+            row_completion_ms = completion_ms
+            if frame_action_mode and row_action != "LEGACY":
+                row_completion_ms = _estimate_action_completion_ms(
+                    row_payload_bytes=row_payload,
+                    action_name=row_action,
+                    send_start_ms=flush_start_ms,
+                    transport_cfg=transport_cfg,
+                    path_states=path_states,
+                )
+
+            latency_ms = row_completion_ms - arrival_ms
             latencies.append(latency_ms)
             if math.isfinite(float(row["display_deadline_ms"])):
-                deadline_miss_ms = max(0.0, completion_ms - float(row["display_deadline_ms"]))
+                deadline_miss_ms = max(0.0, row_completion_ms - float(row["display_deadline_ms"]))
             else:
                 deadline_miss_ms = 0.0
             on_time = deadline_miss_ms <= 0.0
@@ -383,6 +492,7 @@ def run_simulation(
         "frame_action_mode": int(frame_action_mode),
         "importance_scorer_type": importance_scorer_type,
         "available_paths": int(available_paths),
+        "path_profile": path_profile,
         "mean_importance_score": mean_importance_score,
         "dropped_frame_count": int(dropped_frame_count),
         "dropped_frame_ratio": drop_ratio,

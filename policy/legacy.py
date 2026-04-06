@@ -17,6 +17,7 @@ class PolicyConfig:
     flush_interval_ms: Optional[float] = None
     available_paths: int = 1
     model_path: Optional[str] = None
+    path_profile: Optional[str] = None
 
 
 def _resolve_static_heuristic(
