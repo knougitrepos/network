@@ -1,16 +1,18 @@
-# dataset 사용 안내
+# dataset 안내
 
-- 원본 비디오는 `dataset/videos/`에 넣습니다.
-- 프레임 트레이스 CSV는 `dataset/traces/`에 자동 생성됩니다.
-- 중간보고용 노트북 `output/jupyter-notebook/midreport_ipb_transport_summary.ipynb`는 이 경로를 기본 입력으로 사용합니다.
+## 목적
 
-## 권장 파일명 형식
+- `dataset/videos/`는 실제 실험 입력인 원본 MP4를 보관한다.
+- `dataset/traces/`는 원본 비디오에서 생성한 trace CSV 캐시를 보관한다.
 
-- `<group>_<name>_<resolution>_<bitrate>.mp4`
-- 예: `animation_bbb_720p_2mbps.mp4`
+## 규칙
 
-## 최소 메타 정보
+- 실제 비디오가 없는 trace CSV 단독 실험은 허용하지 않는다.
+- trace CSV는 `scripts/video_trace_prepare.py`로만 생성한다.
+- synthetic payload나 임의 생성 비디오 데이터는 두지 않는다.
 
-- group: 유사 계열 그룹명 (예: animation, nature, sports)
-- video_name: 영상 식별명
-- motion_level: low / medium / high
+## 현재 기본 대상
+
+- `archive_popeye_512kb.mp4`
+- `echo_mediaelement.mp4`
+- `w3c_movie_300.mp4`

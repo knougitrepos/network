@@ -1,28 +1,9 @@
-# Byte-compiled / optimized / DLL files
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Data, Checkpoints, and Generated Graphs
-output/jupyter-notebook/assets/
-!output/jupyter-notebook/assets/
-*.csv
-*.png
-*.pdf
-!data/video-traces/*.csv
-!output/jupyter-notebook/assets/video_utility_comparison.png
-!output/jupyter-notebook/assets/best_fixed_vs_prediction_scatter.png
-!output/jupyter-notebook/assets/fixed_policy_grid_results.csv
-!output/jupyter-notebook/assets/best_fixed_config_selection.csv
-!output/jupyter-notebook/assets/midreport/
-!output/jupyter-notebook/assets/midreport/*.png
-!output/jupyter-notebook/assets/midreport/*.csv
-
-# Jupyter Notebook
-.ipynb_checkpoints
-*/.ipynb_checkpoints/
-
-# Environments
+# Virtual environments
 .env
 .venv
 env/
@@ -31,25 +12,11 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE settings
-.vscode/
-.idea/
-*.swp
-*.swo
+# Notebook cache
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
 
-# Local scratch space
-tmp/
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# --- Python tooling caches ---
+# Tool cache
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -61,16 +28,39 @@ htmlcov/
 coverage.xml
 *.cover
 
-# --- build artifacts ---
+# Build artifacts
 *.egg-info/
 dist/
 build/
 pip-wheel-metadata/
 
-# --- logs / temp ---
+# Local scratch space
+tmp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
 *.log
 *.tmp
 
-# Mid-report reproducibility dataset artifacts
-dataset/videos/
+# Generated experiment outputs
+output/mininet_actual_experiment/
+output/notebooks/*.html
+output/notebooks/*.png
+
+# Generated trace cache
 dataset/traces/
+dataset/videos/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
