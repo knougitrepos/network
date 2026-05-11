@@ -106,7 +106,7 @@ class DeadlineFeasibleActionTest(unittest.TestCase):
 
         self.assertEqual(FrameAction.UNRELIABLE, action)
 
-    def test_protected_frame_stays_reliable_when_infeasible_and_medium_importance(self) -> None:
+    def test_protected_frame_uses_unreliable_when_infeasible_and_medium_importance(self) -> None:
         action = select_deadline_feasible_action(
             importance_score=0.5,
             payload_bytes=100_000,
@@ -116,12 +116,24 @@ class DeadlineFeasibleActionTest(unittest.TestCase):
             protected_frame=True,
         )
 
-        self.assertEqual(FrameAction.RELIABLE_SINGLE, action)
+        self.assertEqual(FrameAction.UNRELIABLE, action)
 
-    def test_protected_frame_is_not_dropped_when_low_importance(self) -> None:
+    def test_protected_frame_uses_unreliable_instead_of_drop_when_low_importance(self) -> None:
         action = select_deadline_feasible_action(
             importance_score=0.2,
             payload_bytes=100_000,
+            current_time_ms=0.0,
+            display_deadline_ms=100.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=True,
+        )
+
+        self.assertEqual(FrameAction.UNRELIABLE, action)
+
+    def test_protected_frame_stays_reliable_when_feasible(self) -> None:
+        action = select_deadline_feasible_action(
+            importance_score=0.5,
+            payload_bytes=1_000,
             current_time_ms=0.0,
             display_deadline_ms=100.0,
             network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),

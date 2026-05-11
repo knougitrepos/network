@@ -71,6 +71,8 @@ def select_deadline_feasible_action(
     is_feasible = deadline_margin_ms >= 0.0
 
     if protected_frame:
+        if not is_feasible:
+            return FrameAction.UNRELIABLE
         if available_paths > 1:
             return FrameAction.RELIABLE_MULTI
         return FrameAction.RELIABLE_SINGLE
