@@ -71,6 +71,18 @@ class ExperimentSummary:
     useful_goodput_bytes: float
     keyframe_late_ratio: float
     decodable_gop_ratio: float
+    sent_bytes: float
+    on_time_bytes: float
+    late_bytes: float
+    dropped_bytes: float
+    wasted_late_bytes_ratio: float
+    on_time_goodput_ratio: float
+    dropped_keyframe_count: int
+    reliable_single_count: int
+    unreliable_count: int
+    drop_count: int
+    reliable_single_late_count: int
+    unreliable_late_count: int
 
 
 def _write_rows(rows: Sequence[dict[str, object]], output_path: Path, fieldnames: list[str]) -> None:
@@ -156,6 +168,24 @@ def build_experiment_summary(
     dropped_frame_count = int(merged_dataframe["dropped_by_policy"].astype(bool).sum())
     late_frame_ratio = float(late_frame_count / frame_count) if frame_count else 0.0
     late_frames_per_1000 = float(late_frame_ratio * 1000.0)
+    dropped_mask = merged_dataframe["dropped_by_policy"].astype(bool)
+    sent_mask = ~dropped_mask
+    late_mask = ~merged_dataframe["on_time"].astype(bool)
+    action_names = merged_dataframe["selected_action_name"].astype(str).str.upper()
+
+    sent_bytes = float(merged_dataframe.loc[sent_mask, "payload_bytes"].sum())
+    on_time_bytes = float(merged_dataframe.loc[sent_mask & (~late_mask), "payload_bytes"].sum())
+    late_bytes = float(merged_dataframe.loc[sent_mask & late_mask, "payload_bytes"].sum())
+    dropped_bytes = float(merged_dataframe.loc[dropped_mask, "payload_bytes"].sum())
+    wasted_late_bytes_ratio = float(late_bytes / sent_bytes) if sent_bytes else 0.0
+    on_time_goodput_ratio = float(on_time_bytes / sent_bytes) if sent_bytes else 0.0
+    dropped_keyframe_count = int(
+        (dropped_mask & (merged_dataframe["key_frame"].astype(int) == 1)).sum()
+    )
+
+    reliable_single_mask = action_names == "RELIABLE_SINGLE"
+    unreliable_mask = action_names == "UNRELIABLE"
+    drop_mask = action_names == "DROP"
 
     received_late_dataframe = merged_dataframe[
         merged_dataframe["receive_time_ms_from_start"].notna() & (~merged_dataframe["on_time"])
@@ -194,6 +224,18 @@ def build_experiment_summary(
         useful_goodput_bytes=float(video_metrics["useful_goodput_bytes"]),
         keyframe_late_ratio=float(video_metrics["keyframe_late_ratio"]),
         decodable_gop_ratio=float(video_metrics["decodable_gop_ratio"]),
+        sent_bytes=sent_bytes,
+        on_time_bytes=on_time_bytes,
+        late_bytes=late_bytes,
+        dropped_bytes=dropped_bytes,
+        wasted_late_bytes_ratio=wasted_late_bytes_ratio,
+        on_time_goodput_ratio=on_time_goodput_ratio,
+        dropped_keyframe_count=dropped_keyframe_count,
+        reliable_single_count=int(reliable_single_mask.sum()),
+        unreliable_count=int(unreliable_mask.sum()),
+        drop_count=int(drop_mask.sum()),
+        reliable_single_late_count=int((reliable_single_mask & late_mask).sum()),
+        unreliable_late_count=int((unreliable_mask & late_mask).sum()),
     )
 
 
@@ -211,6 +253,12 @@ def aggregate_experiment_summaries(
     late_frame_count = sum(summary.late_frame_count for summary in summary_list)
     dropped_frame_count = sum(summary.dropped_frame_count for summary in summary_list)
     late_frame_ratio = float(late_frame_count / frame_count) if frame_count else 0.0
+    sent_bytes = float(sum(summary.sent_bytes for summary in summary_list))
+    on_time_bytes = float(sum(summary.on_time_bytes for summary in summary_list))
+    late_bytes = float(sum(summary.late_bytes for summary in summary_list))
+    dropped_bytes = float(sum(summary.dropped_bytes for summary in summary_list))
+    wasted_late_bytes_ratio = float(late_bytes / sent_bytes) if sent_bytes else 0.0
+    on_time_goodput_ratio = float(on_time_bytes / sent_bytes) if sent_bytes else 0.0
 
     return ExperimentSummary(
         video_name=first_summary.video_name,
@@ -236,6 +284,20 @@ def aggregate_experiment_summaries(
         decodable_gop_ratio=float(
             sum(summary.decodable_gop_ratio for summary in summary_list) / len(summary_list)
         ),
+        sent_bytes=sent_bytes,
+        on_time_bytes=on_time_bytes,
+        late_bytes=late_bytes,
+        dropped_bytes=dropped_bytes,
+        wasted_late_bytes_ratio=wasted_late_bytes_ratio,
+        on_time_goodput_ratio=on_time_goodput_ratio,
+        dropped_keyframe_count=sum(summary.dropped_keyframe_count for summary in summary_list),
+        reliable_single_count=sum(summary.reliable_single_count for summary in summary_list),
+        unreliable_count=sum(summary.unreliable_count for summary in summary_list),
+        drop_count=sum(summary.drop_count for summary in summary_list),
+        reliable_single_late_count=sum(
+            summary.reliable_single_late_count for summary in summary_list
+        ),
+        unreliable_late_count=sum(summary.unreliable_late_count for summary in summary_list),
     )
 
 

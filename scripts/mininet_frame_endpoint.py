@@ -22,7 +22,7 @@ from core.mininet_actual_experiment import (
 )
 from core.transport import TransportConfig
 from core.video_assets import VideoFrameAsset, load_video_frame_assets
-from policy.action import FrameAction, select_action
+from policy.action import FrameAction, select_action, select_deadline_feasible_action
 from policy.importance import HeuristicImportanceScorer, NetworkState
 from policy.legacy import resolve_video_queue_policy
 
@@ -256,6 +256,7 @@ def run_frame_action_single_path_client(
     frame_assets: list[VideoFrameAsset],
 ) -> list[ClientTransmissionEvent]:
     scorer = HeuristicImportanceScorer(playback_buffer_ms=float(args.playback_buffer_ms))
+    max_payload_bytes = max((frame_asset.payload_bytes for frame_asset in frame_assets), default=1)
     client_events: list[ClientTransmissionEvent] = []
 
     with socket.create_connection((args.server_host, args.tcp_port)) as tcp_connection:
@@ -277,6 +278,7 @@ def run_frame_action_single_path_client(
                 frame_record = {
                     "frame_type": frame_asset.frame_type,
                     "payload_bytes": frame_asset.payload_bytes,
+                    "max_payload_bytes": max_payload_bytes,
                     "display_deadline_ms": frame_asset.display_deadline_ms,
                     "event_time_ms": current_time_ms,
                     "key_frame": frame_asset.key_frame,
@@ -351,6 +353,108 @@ def run_frame_action_single_path_client(
     return client_events
 
 
+def run_deadline_feasible_frame_action_client(
+    args: argparse.Namespace,
+    frame_assets: list[VideoFrameAsset],
+) -> list[ClientTransmissionEvent]:
+    scorer = HeuristicImportanceScorer(playback_buffer_ms=float(args.playback_buffer_ms))
+    max_payload_bytes = max((frame_asset.payload_bytes for frame_asset in frame_assets), default=1)
+    client_events: list[ClientTransmissionEvent] = []
+
+    with socket.create_connection((args.server_host, args.tcp_port)) as tcp_connection:
+        tcp_connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+            experiment_start_time_ns = time.monotonic_ns()
+
+            for frame_asset in frame_assets:
+                scheduled_send_time_ns = experiment_start_time_ns + int(frame_asset.pts_ms * 1_000_000.0)
+                sleep_until_ns(scheduled_send_time_ns)
+
+                current_time_ms = (time.monotonic_ns() - experiment_start_time_ns) / 1_000_000.0
+                network_state = build_network_state(
+                    round_trip_time_ms=float(args.round_trip_time_ms),
+                    bandwidth_mbps=float(args.bandwidth_mbps),
+                    loss_rate=float(args.loss_rate),
+                    queued_payload_bytes=0,
+                )
+                frame_record = {
+                    "frame_type": frame_asset.frame_type,
+                    "payload_bytes": frame_asset.payload_bytes,
+                    "max_payload_bytes": max_payload_bytes,
+                    "display_deadline_ms": frame_asset.display_deadline_ms,
+                    "event_time_ms": current_time_ms,
+                    "key_frame": frame_asset.key_frame,
+                }
+                importance_score = scorer.score(frame_record, network_state)
+                selected_action = select_deadline_feasible_action(
+                    importance_score=importance_score,
+                    payload_bytes=frame_asset.payload_bytes,
+                    current_time_ms=current_time_ms,
+                    display_deadline_ms=frame_asset.display_deadline_ms,
+                    network=network_state,
+                    available_paths=1,
+                    queue_bytes=0,
+                )
+
+                if selected_action == FrameAction.RELIABLE_SINGLE:
+                    send_start_time_ns = send_frame_over_tcp(tcp_connection, frame_asset)
+                    client_events.append(
+                        build_client_event(
+                            experiment_start_time_ns=experiment_start_time_ns,
+                            video_name=args.video_name,
+                            policy_name=args.policy_name,
+                            frame_asset=frame_asset,
+                            selected_action_name=selected_action.name,
+                            transport_protocol=TCP_PROTOCOL,
+                            send_start_time_ns=send_start_time_ns,
+                            dropped_by_policy=False,
+                        )
+                    )
+                    continue
+
+                if selected_action == FrameAction.UNRELIABLE:
+                    send_start_time_ns = send_frame_over_udp(
+                        udp_socket=udp_socket,
+                        server_host=args.server_host,
+                        udp_port=int(args.udp_port),
+                        frame_asset=frame_asset,
+                    )
+                    client_events.append(
+                        build_client_event(
+                            experiment_start_time_ns=experiment_start_time_ns,
+                            video_name=args.video_name,
+                            policy_name=args.policy_name,
+                            frame_asset=frame_asset,
+                            selected_action_name=selected_action.name,
+                            transport_protocol=UDP_PROTOCOL,
+                            send_start_time_ns=send_start_time_ns,
+                            dropped_by_policy=False,
+                        )
+                    )
+                    continue
+
+                if selected_action == FrameAction.DROP:
+                    client_events.append(
+                        build_client_event(
+                            experiment_start_time_ns=experiment_start_time_ns,
+                            video_name=args.video_name,
+                            policy_name=args.policy_name,
+                            frame_asset=frame_asset,
+                            selected_action_name=selected_action.name,
+                            transport_protocol="drop",
+                            send_start_time_ns=time.monotonic_ns(),
+                            dropped_by_policy=True,
+                        )
+                    )
+                    continue
+
+                raise RuntimeError(
+                    f"Deadline-feasible single-path experiment produced unsupported action: {selected_action.name}"
+                )
+
+    return client_events
+
+
 def run_client(args: argparse.Namespace) -> None:
     frame_assets = load_video_frame_assets(
         video_path=Path(args.video_path).resolve(),
@@ -361,6 +465,8 @@ def run_client(args: argparse.Namespace) -> None:
         client_events = run_heuristic_frame_aware_client(args, frame_assets)
     elif args.policy_name == "frame_action_single_path":
         client_events = run_frame_action_single_path_client(args, frame_assets)
+    elif args.policy_name == "deadline_feasible_frame_action":
+        client_events = run_deadline_feasible_frame_action_client(args, frame_assets)
     else:
         raise ValueError(f"Unsupported policy: {args.policy_name}")
 

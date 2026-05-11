@@ -12,14 +12,16 @@
 
 1. 실제 비디오에서 frame trace와 실제 payload를 추출하는 공통 모듈 정리
 2. Mininet client/server 실제 전송 경로 구현
-3. `heuristic_frame_aware`, `frame_action_single_path` 두 정책만 남겨 단일 경로 실험 정리
-4. 이벤트 CSV, 요약 CSV, 노트북 분석 경로 고정
+3. `heuristic_frame_aware`, `frame_action_single_path`, `deadline_feasible_frame_action` 단일 경로 실험 정리
+4. deadline feasibility 기반 TCP/UDP/DROP 판단과 byte/action 요약 지표 고정
+5. 이벤트 CSV, 요약 CSV, 노트북 분석 경로 고정
 
 ## 실험 원칙
 
 - 실험 입력은 실제 MP4만 허용
 - trace CSV는 원본 비디오 기반 캐시만 허용
 - `late_frame_ratio`는 항상 `late_frame_count / frame_count`와 함께 제시
+- deadline 이후 도착하거나 수신되지 못한 전송 byte는 application-level loss/waste로 분리 제시
 - 환경 미충족 시 대체 모드 없이 실패
 
 ## 후속 확장

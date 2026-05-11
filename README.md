@@ -48,9 +48,9 @@ docs/
 
 1. `dataset/videos/`의 실제 MP4를 준비한다.
 2. `scripts/video_trace_prepare.py`로 프레임 메타데이터와 trace CSV를 생성한다.
-3. 정책은 `heuristic_frame_aware`, `frame_action_single_path` 두 가지만 사용한다.
+3. 정책은 `heuristic_frame_aware`, `frame_action_single_path`, `deadline_feasible_frame_action`을 사용한다.
 4. `scripts/mininet_actual_experiment.py`가 WSL2 Ubuntu의 Mininet에서 실제 전송을 수행한다.
-5. 결과는 `late_frame_ratio`, `late_frame_count / frame_count`, `late_frames_per_1000` 등으로 저장한다.
+5. 결과는 `late_frame_ratio`, `late_frame_count / frame_count`, `late_frames_per_1000`, byte/action 기반 지표 등으로 저장한다.
 6. 노트북은 결과 CSV를 읽어 표와 그래프만 만든다.
 
 ## 현재 기본 실험 범위
@@ -61,12 +61,16 @@ docs/
   - `w3c_movie_300`
 - 네트워크:
   - single-path
-  - `3 Mbps`, `2 Mbps`, `1 Mbps`
-  - `RTT 10 ms`
-  - `loss 0%`
+  - `1 Mbps`, `2 Mbps`, `3 Mbps`, `5 Mbps`
+  - `RTT 10 ms`, `50 ms`, `100 ms`
+  - `loss 0%`, `1%`, `3%`
 - 정책:
   - `heuristic_frame_aware`
   - `frame_action_single_path`
+  - `deadline_feasible_frame_action`
+
+`RTT 10 ms / loss 0%`가 아닌 조건은 출력 경로 충돌을 피하기 위해
+`<bandwidth>mbps_rtt<RTT>ms_loss<loss>pct` 형식의 조건 디렉터리에 저장한다.
 
 ## 실행 전 요구사항
 

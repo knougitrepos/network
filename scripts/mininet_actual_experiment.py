@@ -32,6 +32,14 @@ MOVIE_VIDEO_NAMES = (
     "echo_mediaelement",
     "w3c_movie_300",
 )
+EXPERIMENT_POLICY_NAMES = (
+    "heuristic_frame_aware",
+    "frame_action_single_path",
+    "deadline_feasible_frame_action",
+)
+DEFAULT_BANDWIDTH_VALUES_MBPS = (1.0, 2.0, 3.0, 5.0)
+DEFAULT_RTT_VALUES_MS = (10.0, 50.0, 100.0)
+DEFAULT_LOSS_RATE_VALUES = (0.0, 1.0, 3.0)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video-name", choices=MOVIE_VIDEO_NAMES, required=True)
     parser.add_argument(
         "--policy-name",
-        choices=("heuristic_frame_aware", "frame_action_single_path"),
+        choices=EXPERIMENT_POLICY_NAMES,
         required=True,
     )
     parser.add_argument("--bandwidth-mbps", type=float, required=True)
@@ -97,12 +105,38 @@ def ensure_actual_experiment_dependencies(python_executable: str) -> None:
     require_pyav()
 
 
+def _format_condition_number(value: float) -> str:
+    numeric_value = float(value)
+    if numeric_value.is_integer():
+        return str(int(numeric_value))
+    return f"{numeric_value:g}".replace(".", "p")
+
+
+def build_condition_directory_name(
+    bandwidth_mbps: float,
+    round_trip_time_ms: float,
+    loss_rate: float,
+) -> str:
+    bandwidth_name = f"{_format_condition_number(bandwidth_mbps)}mbps"
+    if float(round_trip_time_ms) == 10.0 and float(loss_rate) == 0.0:
+        return bandwidth_name
+    return (
+        f"{bandwidth_name}_"
+        f"rtt{_format_condition_number(round_trip_time_ms)}ms_"
+        f"loss{_format_condition_number(loss_rate)}pct"
+    )
+
+
 def build_output_directory(args: argparse.Namespace) -> Path:
     return (
         Path(args.output_dir).resolve()
         / args.video_name
         / args.policy_name
-        / f"{int(args.bandwidth_mbps)}mbps"
+        / build_condition_directory_name(
+            float(args.bandwidth_mbps),
+            float(args.round_trip_time_ms),
+            float(args.loss_rate),
+        )
     )
 
 

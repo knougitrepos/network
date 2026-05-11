@@ -7,8 +7,6 @@ FrameAction은 QUIC Stream/DATAGRAM + multipath 환경에서의
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Optional, Sequence
-
 from policy.importance import NetworkState
 
 
@@ -24,6 +22,76 @@ class FrameAction(Enum):
 _HIGH_IMPORTANCE = 0.75
 _LOW_IMPORTANCE = 0.30
 _CRITICAL_SLACK_MS = 10.0
+
+
+def _resolve_thresholds(
+    importance_thresholds: tuple[float, float] | None,
+) -> tuple[float, float]:
+    if importance_thresholds is not None:
+        return importance_thresholds
+    return _LOW_IMPORTANCE, _HIGH_IMPORTANCE
+
+
+def estimate_completion_ms(
+    *,
+    payload_bytes: int,
+    current_time_ms: float,
+    network: NetworkState,
+    queue_bytes: int = 0,
+) -> float:
+    """Estimate application-visible frame completion time for deadline checks."""
+    effective_bandwidth_mbps = max(float(network.bandwidth_mbps), 0.001)
+    queued_bytes = max(int(queue_bytes), int(network.queue_bytes), 0)
+    total_bytes = max(int(payload_bytes), 0) + queued_bytes
+    transmit_time_ms = (total_bytes * 8.0) / (effective_bandwidth_mbps * 1_000_000.0) * 1000.0
+    return float(current_time_ms) + transmit_time_ms + float(network.rtt_ms) * 0.5
+
+
+def select_deadline_feasible_action(
+    *,
+    importance_score: float,
+    payload_bytes: int,
+    current_time_ms: float,
+    display_deadline_ms: float,
+    network: NetworkState,
+    available_paths: int = 1,
+    queue_bytes: int = 0,
+    importance_thresholds: tuple[float, float] | None = None,
+) -> FrameAction:
+    """Choose a frame action after first checking deadline feasibility."""
+    low_threshold, high_threshold = _resolve_thresholds(importance_thresholds)
+    estimated_completion_ms = estimate_completion_ms(
+        payload_bytes=payload_bytes,
+        current_time_ms=current_time_ms,
+        network=network,
+        queue_bytes=queue_bytes,
+    )
+    deadline_margin_ms = float(display_deadline_ms) - estimated_completion_ms
+    is_feasible = deadline_margin_ms >= 0.0
+
+    if not is_feasible and importance_score < low_threshold:
+        return FrameAction.DROP
+
+    if importance_score >= high_threshold:
+        if available_paths > 1 and is_feasible and deadline_margin_ms > _CRITICAL_SLACK_MS:
+            return FrameAction.DUPLICATE
+        if available_paths > 1:
+            return FrameAction.RELIABLE_MULTI
+        return FrameAction.RELIABLE_SINGLE
+
+    if not is_feasible:
+        return FrameAction.UNRELIABLE
+
+    if importance_score >= low_threshold and deadline_margin_ms <= float(network.rtt_ms) * 0.5:
+        return FrameAction.UNRELIABLE
+
+    if importance_score < low_threshold:
+        return FrameAction.UNRELIABLE
+
+    if available_paths > 1:
+        return FrameAction.RELIABLE_MULTI
+
+    return FrameAction.RELIABLE_SINGLE
 
 
 def select_action(
@@ -55,11 +123,7 @@ def select_action(
     5. slack 여유 충분 & 낮은 중요도 → UNRELIABLE
     6. 기본 → RELIABLE_SINGLE
     """
-    # 동적 임계값 지원: 모델별 점수 분포 차이 보정
-    if importance_thresholds is not None:
-        low_threshold, high_threshold = importance_thresholds
-    else:
-        low_threshold, high_threshold = _LOW_IMPORTANCE, _HIGH_IMPORTANCE
+    low_threshold, high_threshold = _resolve_thresholds(importance_thresholds)
 
     if deadline_slack_ms <= 0 and importance_score < low_threshold:
         return FrameAction.DROP
