@@ -394,6 +394,7 @@ def run_deadline_feasible_frame_action_client(
                     network=network_state,
                     available_paths=1,
                     queue_bytes=0,
+                    protected_frame=frame_asset.key_frame == 1 or frame_asset.frame_type.upper() == "I",
                 )
 
                 if selected_action == FrameAction.RELIABLE_SINGLE:

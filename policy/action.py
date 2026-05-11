@@ -56,6 +56,7 @@ def select_deadline_feasible_action(
     network: NetworkState,
     available_paths: int = 1,
     queue_bytes: int = 0,
+    protected_frame: bool = False,
     importance_thresholds: tuple[float, float] | None = None,
 ) -> FrameAction:
     """Choose a frame action after first checking deadline feasibility."""
@@ -68,6 +69,11 @@ def select_deadline_feasible_action(
     )
     deadline_margin_ms = float(display_deadline_ms) - estimated_completion_ms
     is_feasible = deadline_margin_ms >= 0.0
+
+    if protected_frame:
+        if available_paths > 1:
+            return FrameAction.RELIABLE_MULTI
+        return FrameAction.RELIABLE_SINGLE
 
     if not is_feasible and importance_score < low_threshold:
         return FrameAction.DROP
