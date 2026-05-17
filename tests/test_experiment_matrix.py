@@ -20,6 +20,7 @@ class ExperimentMatrixTest(unittest.TestCase):
         self.assertEqual((10.0, 50.0, 100.0), DEFAULT_RTT_VALUES_MS)
         self.assertEqual((0.0, 1.0, 3.0), DEFAULT_LOSS_RATE_VALUES)
         self.assertIn("deadline_feasible_frame_action", EXPERIMENT_POLICY_NAMES)
+        self.assertIn("gop_aware_deadline_frame_action", EXPERIMENT_POLICY_NAMES)
 
     def test_non_default_rtt_or_loss_gets_distinct_output_directory(self) -> None:
         self.assertEqual("5mbps", build_condition_directory_name(5.0, 10.0, 0.0))

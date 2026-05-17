@@ -22,6 +22,7 @@ class FrameAction(Enum):
 _HIGH_IMPORTANCE = 0.75
 _LOW_IMPORTANCE = 0.30
 _CRITICAL_SLACK_MS = 10.0
+_GOP_KEYFRAME_MIN_MARGIN_MS = 5.0
 
 
 def _resolve_thresholds(
@@ -100,6 +101,61 @@ def select_deadline_feasible_action(
         return FrameAction.RELIABLE_MULTI
 
     return FrameAction.RELIABLE_SINGLE
+
+
+def select_gop_aware_deadline_action(
+    *,
+    importance_score: float,
+    payload_bytes: int,
+    current_time_ms: float,
+    display_deadline_ms: float,
+    network: NetworkState,
+    available_paths: int = 1,
+    queue_bytes: int = 0,
+    protected_frame: bool = False,
+    gop_admitted: bool = True,
+    key_frame_margin_ms: float | None = None,
+    importance_thresholds: tuple[float, float] | None = None,
+) -> FrameAction:
+    """Choose a deadline action while respecting GOP decodability.
+
+    I/key frames admit or reject the whole GOP. If the I-frame cannot arrive
+    with a conservative margin, dropping the GOP is cheaper than spending bytes
+    on frames that cannot contribute to decodable output.
+    """
+    if protected_frame:
+        estimated_completion_ms = estimate_completion_ms(
+            payload_bytes=payload_bytes,
+            current_time_ms=current_time_ms,
+            network=network,
+            queue_bytes=queue_bytes,
+        )
+        deadline_margin_ms = float(display_deadline_ms) - estimated_completion_ms
+        required_margin_ms = (
+            float(key_frame_margin_ms)
+            if key_frame_margin_ms is not None
+            else _GOP_KEYFRAME_MIN_MARGIN_MS
+        )
+        if deadline_margin_ms < required_margin_ms:
+            return FrameAction.DROP
+        if available_paths > 1:
+            return FrameAction.RELIABLE_MULTI
+        return FrameAction.RELIABLE_SINGLE
+
+    if not gop_admitted:
+        return FrameAction.DROP
+
+    return select_deadline_feasible_action(
+        importance_score=importance_score,
+        payload_bytes=payload_bytes,
+        current_time_ms=current_time_ms,
+        display_deadline_ms=display_deadline_ms,
+        network=network,
+        available_paths=available_paths,
+        queue_bytes=queue_bytes,
+        protected_frame=False,
+        importance_thresholds=importance_thresholds,
+    )
 
 
 def select_action(

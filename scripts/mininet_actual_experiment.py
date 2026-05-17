@@ -36,6 +36,7 @@ EXPERIMENT_POLICY_NAMES = (
     "heuristic_frame_aware",
     "frame_action_single_path",
     "deadline_feasible_frame_action",
+    "gop_aware_deadline_frame_action",
 )
 DEFAULT_BANDWIDTH_VALUES_MBPS = (1.0, 2.0, 3.0, 5.0)
 DEFAULT_RTT_VALUES_MS = (10.0, 50.0, 100.0)

@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import unittest
 
-from policy.action import FrameAction, select_deadline_feasible_action
+from policy.action import (
+    FrameAction,
+    select_deadline_feasible_action,
+    select_gop_aware_deadline_action,
+)
 from policy.importance import HeuristicImportanceScorer, NetworkState
 
 
@@ -141,6 +145,73 @@ class DeadlineFeasibleActionTest(unittest.TestCase):
         )
 
         self.assertEqual(FrameAction.RELIABLE_SINGLE, action)
+
+
+class GopAwareDeadlineActionTest(unittest.TestCase):
+    def test_infeasible_key_frame_is_dropped_instead_of_sent_unreliably(self) -> None:
+        action = select_gop_aware_deadline_action(
+            importance_score=0.9,
+            payload_bytes=200_000,
+            current_time_ms=0.0,
+            display_deadline_ms=100.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=True,
+            gop_admitted=True,
+        )
+
+        self.assertEqual(FrameAction.DROP, action)
+
+    def test_feasible_key_frame_stays_reliable_and_admits_gop(self) -> None:
+        action = select_gop_aware_deadline_action(
+            importance_score=0.9,
+            payload_bytes=1_000,
+            current_time_ms=0.0,
+            display_deadline_ms=100.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=True,
+            gop_admitted=True,
+        )
+
+        self.assertEqual(FrameAction.RELIABLE_SINGLE, action)
+
+    def test_key_frame_does_not_require_full_rtt_of_extra_margin(self) -> None:
+        action = select_gop_aware_deadline_action(
+            importance_score=0.9,
+            payload_bytes=8_000,
+            current_time_ms=0.0,
+            display_deadline_ms=100.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=True,
+            gop_admitted=True,
+        )
+
+        self.assertEqual(FrameAction.RELIABLE_SINGLE, action)
+
+    def test_p_frame_in_rejected_gop_is_dropped(self) -> None:
+        action = select_gop_aware_deadline_action(
+            importance_score=0.6,
+            payload_bytes=1_000,
+            current_time_ms=20.0,
+            display_deadline_ms=100.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=False,
+            gop_admitted=False,
+        )
+
+        self.assertEqual(FrameAction.DROP, action)
+
+    def test_p_frame_in_admitted_gop_uses_deadline_feasible_path(self) -> None:
+        action = select_gop_aware_deadline_action(
+            importance_score=0.5,
+            payload_bytes=1_000,
+            current_time_ms=0.0,
+            display_deadline_ms=40.0,
+            network=NetworkState(rtt_ms=50.0, bandwidth_mbps=1.0),
+            protected_frame=False,
+            gop_admitted=True,
+        )
+
+        self.assertEqual(FrameAction.UNRELIABLE, action)
 
 
 if __name__ == "__main__":
