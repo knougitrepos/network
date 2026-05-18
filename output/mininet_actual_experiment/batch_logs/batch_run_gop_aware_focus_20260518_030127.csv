@@ -1,0 +1,10 @@
+﻿video_name,policy_name,bandwidth_mbps,round_trip_time_ms,loss_rate,job_index,job_count,output_directory,summary_csv,status,return_code,elapsed_seconds,stdout_tail,stderr_tail
+archive_popeye_512kb,gop_aware_deadline_frame_action,1.0,50.0,0.0,1,1,output\mininet_actual_experiment\archive_popeye_512kb\gop_aware_deadline_frame_action\1mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\gop_aware_deadline_frame_action\1mbps_rtt50ms_loss0pct\summary.csv,failed,1,0.969,,"Traceback (most recent call last):
+  File ""/mnt/c/git/network/scripts/mininet_actual_experiment.py"", line 377, in <module>
+    main()
+  File ""/mnt/c/git/network/scripts/mininet_actual_experiment.py"", line 319, in main
+    output_directory.mkdir(parents=True, exist_ok=True)
+  File ""/usr/lib/python3.12/pathlib.py"", line 1313, in mkdir
+    os.mkdir(self, mode)
+FileExistsError: [Errno 17] File exists: '/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/gop_aware_deadline_frame_action/1mbps_rtt50ms_loss0pct'
+"

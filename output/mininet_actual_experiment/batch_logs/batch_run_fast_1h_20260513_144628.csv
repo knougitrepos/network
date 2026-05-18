@@ -1,0 +1,145 @@
+﻿video_name,policy_name,bandwidth_mbps,round_trip_time_ms,loss_rate,job_index,job_count,output_directory,summary_csv,status,return_code,elapsed_seconds,stdout_tail,stderr_tail
+archive_popeye_512kb,heuristic_frame_aware,1.0,10.0,0.0,1,12,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\1mbps,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\1mbps\summary.csv,completed,0,1322.969,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/1mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/1mbps/summary.csv""
+}
+","2026-05-13 10:21:52,204 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+2026-05-13 10:29:08,697 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+2026-05-13 10:36:32,192 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,1.0,50.0,0.0,2,12,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\1mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\1mbps_rtt50ms_loss0pct\summary.csv,completed,0,1326.828,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/1mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/1mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 10:43:54,389 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+2026-05-13 10:51:15,351 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+2026-05-13 10:58:37,992 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,5.0,10.0,0.0,3,12,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\5mbps,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\5mbps\summary.csv,completed,0,1334.969,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/5mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/5mbps/summary.csv""
+}
+","2026-05-13 11:06:00,211 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+2026-05-13 11:13:26,071 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+2026-05-13 11:20:45,754 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,5.0,50.0,0.0,4,12,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\5mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\5mbps_rtt50ms_loss0pct\summary.csv,completed,0,1336.188,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/5mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/5mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 11:28:16,489 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+2026-05-13 11:35:39,559 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+2026-05-13 11:43:03,260 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=5.0 Mbps
+"
+archive_popeye_512kb,frame_action_single_path,1.0,10.0,0.0,5,12,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\1mbps,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\1mbps\summary.csv,completed,0,1329.485,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""frame_action_single_path"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/1mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/1mbps/summary.csv""
+}
+","2026-05-13 11:50:31,318 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+2026-05-13 11:57:59,540 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+2026-05-13 12:05:20,324 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,frame_action_single_path,1.0,50.0,0.0,6,12,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\1mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\1mbps_rtt50ms_loss0pct\summary.csv,completed,0,1318.5,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""frame_action_single_path"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/1mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/1mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 12:12:39,482 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+2026-05-13 12:20:00,570 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+2026-05-13 12:27:18,146 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,frame_action_single_path,5.0,10.0,0.0,7,12,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\5mbps,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\5mbps\summary.csv,completed,0,1325.718,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""frame_action_single_path"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/5mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/5mbps/summary.csv""
+}
+","2026-05-13 12:34:38,094 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+2026-05-13 12:41:57,685 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+2026-05-13 12:49:18,391 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+"
+archive_popeye_512kb,frame_action_single_path,5.0,50.0,0.0,8,12,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\5mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\frame_action_single_path\5mbps_rtt50ms_loss0pct\summary.csv,completed,0,1336.672,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""frame_action_single_path"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/5mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/frame_action_single_path/5mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 12:56:44,694 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+2026-05-13 13:04:16,690 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+2026-05-13 13:11:37,218 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=frame_action_single_path bandwidth=5.0 Mbps
+"
+archive_popeye_512kb,deadline_feasible_frame_action,1.0,10.0,0.0,9,12,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\1mbps,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\1mbps\summary.csv,completed,0,1324.859,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""deadline_feasible_frame_action"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/1mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/1mbps/summary.csv""
+}
+","2026-05-13 13:19:00,911 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+2026-05-13 13:26:25,041 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+2026-05-13 13:33:46,200 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,deadline_feasible_frame_action,1.0,50.0,0.0,10,12,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\1mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\1mbps_rtt50ms_loss0pct\summary.csv,completed,0,1317.875,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""deadline_feasible_frame_action"",
+  ""bandwidth_mbps"": 1.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/1mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/1mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 13:41:07,704 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+2026-05-13 13:48:25,591 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+2026-05-13 13:55:44,658 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=1.0 Mbps
+"
+archive_popeye_512kb,deadline_feasible_frame_action,5.0,10.0,0.0,11,12,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\5mbps,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\5mbps\summary.csv,completed,0,1315.047,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""deadline_feasible_frame_action"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/5mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/5mbps/summary.csv""
+}
+","2026-05-13 14:03:05,374 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+2026-05-13 14:10:21,984 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+2026-05-13 14:17:40,932 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+"
+archive_popeye_512kb,deadline_feasible_frame_action,5.0,50.0,0.0,12,12,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\5mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\deadline_feasible_frame_action\5mbps_rtt50ms_loss0pct\summary.csv,completed,0,1315.468,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""deadline_feasible_frame_action"",
+  ""bandwidth_mbps"": 5.0,
+  ""repeat_count"": 3,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/5mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/deadline_feasible_frame_action/5mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-13 14:24:59,081 INFO __main__ - Starting repeat 1/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+2026-05-13 14:32:19,462 INFO __main__ - Starting repeat 2/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+2026-05-13 14:39:37,296 INFO __main__ - Starting repeat 3/3 for video=archive_popeye_512kb policy=deadline_feasible_frame_action bandwidth=5.0 Mbps
+"

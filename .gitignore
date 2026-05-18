@@ -48,10 +48,9 @@ tmp/
 *.tmp
 
 # Generated experiment outputs
-output/mininet_actual_experiment/
-output/notebooks/*.html
-output/notebooks/*.png
-
+# output/mininet_actual_experiment/
+# output/notebooks/*.html
+# output/notebooks/*.png
 # Generated trace cache
 dataset/traces/
 dataset/videos/

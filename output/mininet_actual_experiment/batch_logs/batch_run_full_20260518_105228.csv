@@ -1,0 +1,81 @@
+﻿video_name,policy_name,bandwidth_mbps,round_trip_time_ms,loss_rate,job_index,job_count,output_directory,summary_csv,status,return_code,elapsed_seconds,stdout_tail,stderr_tail
+archive_popeye_512kb,heuristic_frame_aware,0.5,10.0,0.0,1,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps\summary.csv,completed,0,484.0,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps/summary.csv""
+}
+","2026-05-18 09:46:19,755 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,10.0,1.0,2,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt10ms_loss1pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt10ms_loss1pct\summary.csv,completed,0,483.125,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt10ms_loss1pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt10ms_loss1pct/summary.csv""
+}
+","2026-05-18 09:54:23,551 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,10.0,3.0,3,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt10ms_loss3pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt10ms_loss3pct\summary.csv,completed,0,504.079,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt10ms_loss3pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt10ms_loss3pct/summary.csv""
+}
+","2026-05-18 10:02:24,283 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,50.0,0.0,4,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss0pct\summary.csv,completed,0,483.797,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss0pct/summary.csv""
+}
+","2026-05-18 10:10:50,585 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,50.0,1.0,5,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss1pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss1pct\summary.csv,completed,0,489.406,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss1pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss1pct/summary.csv""
+}
+","2026-05-18 10:18:51,943 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,50.0,3.0,6,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss3pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt50ms_loss3pct\summary.csv,completed,0,557.328,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss3pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt50ms_loss3pct/summary.csv""
+}
+","2026-05-18 10:27:01,611 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,100.0,0.0,7,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt100ms_loss0pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt100ms_loss0pct\summary.csv,completed,0,490.984,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt100ms_loss0pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt100ms_loss0pct/summary.csv""
+}
+","2026-05-18 10:36:19,316 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
+archive_popeye_512kb,heuristic_frame_aware,0.5,100.0,1.0,8,243,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt100ms_loss1pct,output\mininet_actual_experiment\archive_popeye_512kb\heuristic_frame_aware\0p5mbps_rtt100ms_loss1pct\summary.csv,completed,0,507.329,"{
+  ""video_name"": ""archive_popeye_512kb"",
+  ""policy_name"": ""heuristic_frame_aware"",
+  ""bandwidth_mbps"": 0.5,
+  ""repeat_count"": 1,
+  ""output_directory"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt100ms_loss1pct"",
+  ""summary_csv"": ""/mnt/c/git/network/output/mininet_actual_experiment/archive_popeye_512kb/heuristic_frame_aware/0p5mbps_rtt100ms_loss1pct/summary.csv""
+}
+","2026-05-18 10:44:30,392 INFO __main__ - Starting repeat 1/1 for video=archive_popeye_512kb policy=heuristic_frame_aware bandwidth=0.5 Mbps
+"
